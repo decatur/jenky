@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jenky</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        table, td, th {
+            border: 1px solid black;
+        }
+
+        table {
+            width: 80%;
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+<body>
+<h1>Jenky, The gentle deploying utility</h1>
+<table>
+    <thead>
+    <tr>
+        <th>Repo Name</th>
+        <th>Git Pull</th>
+        <th>Process Name</th>
+        <th>Running</th>
+        <th>Create Time</th>
+        <th>Kill</th>
+        <th>Restart</th>
+    </tr>
+    </thead>
+    <tbody id="repos"></tbody>
+</table>
+
+<template id="processRow">
+    <tr>
+        <td>Repo Name</td>
+        <td><input type="radio" name="process"></td>
+        <td>Process Name</td>
+        <td>Running</td>
+        <td>Create Time</td>
+        <td>
+            <button type="button">Kill</button>
+        </td>
+        <td>
+            <button type="button">Restart</button>
+        </td>
+    </tr>
+</template>
+
+<fieldset>
+    <legend>Git Actions</legend>
+    <form>
+        <code id="repoName"></code> current tag is <code id="gitTag"></code>
+        <div>
+            <select id="gitTags"></select>
+            <button id="checkout" type="button" disabled>Checkout</button>
+        </div>
+        <pre id="gitMessage"></pre>
+    </form>
+</fieldset>
+
+</body>
+<script type="module">
+    /** @type{jenky.Repo[]} */
+    let repos;
+    /** @type{jenky.RepoDict } */
+    let reposByName;
+
+    /**
+     * @param{jenky.Repo[]} repos
+     */
+    function render_repos(repos) {
+        const tbody = document.getElementById('repos');
+        tbody.textContent = '';
+        const template = document.getElementById('processRow');
+        for (const repo of repos) {
+            for (const [index, proc] of repo.processes.entries()) {
+                let tr = template.content.firstElementChild.cloneNode(true);
+                let td = tr.firstElementChild;
+                td.textContent = repo.repoName;
+
+
+                td = td.nextElementSibling;
+                td.firstElementChild.value = repo.repoName;
+                td.firstElementChild.addEventListener('change', evt => render_repo(evt.target.value));
+
+                td = td.nextElementSibling;
+                td.textContent = proc.name;
+
+                td = td.nextElementSibling;
+                td.textContent = proc.running;
+
+                td = td.nextElementSibling;
+                td.textContent = proc.createTime?new Date(proc.createTime * 1000).toISOString():'';
+
+                td = td.nextElementSibling;   // Kill
+                td.firstElementChild.disabled = !proc.running;
+                td.firstElementChild.onclick = evt => kill(repo, proc);
+
+                td = td.nextElementSibling;  // Restart
+                td.firstElementChild.disabled = proc.running;
+                td.firstElementChild.onclick = evt => restart(repo, proc);
+
+                tbody.appendChild(tr);
+            }
+        }
+    }
+
+    /**
+     * @param {string} repoName
+     */
+    function render_repo(repoName) {
+        /** @type{HTMLSelectElement} */
+        const select = document.getElementById('gitTags');
+        /** @type{jenky.Repo} */
+        const repo = reposByName[repoName];
+        document.getElementById('checkout').disabled = !repo.gitTag;
+        document.getElementById('checkout').onclick = evt => checkout(repoName, select.value);
+        document.getElementById('repoName').textContent = repoName;
+        document.getElementById('gitTag').textContent = (repo.gitTag ? repo.gitTag : repo.gitMessage);
+        select.textContent = '';
+        for (const tag of repo.gitTags) {
+            const option = document.createElement('option');
+            option.textContent = tag;
+            select.appendChild(option);
+        }
+
+    }
+
+    /**
+     * @param {jenky.Repo} data
+     */
+    function setRepos(data) {
+        repos = /** @type{jenky.Repo[]} */ data;
+        reposByName = {};
+        for (const repo of repos) {
+            reposByName[repo.repoName] = repo;
+        }
+    }
+
+    /**
+     * @param {jenky.Repo} repo
+     * @param {jenky.Process} proc
+     */
+    function kill(repo, proc) {
+        postAction(repo, proc, 'kill');
+    }
+
+    /**
+     * @param {jenky.Repo} repo
+     * @param {jenky.Process} proc
+     */
+    function restart(repo, proc) {
+        postAction(repo, proc, 'restart');
+    }
+
+    function checkout(repoName, gitTag) {
+        const payload = {action: 'checkout', gitTag: gitTag};
+        const msgElem = document.getElementById('gitMessage');
+        msgElem.textContent = 'Loading...';
+        fetch(`/repos/${repoName}`, {method: 'post', body: JSON.stringify(payload)})
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json();
+                } else {
+                    msgElem.textContent = (response.statusText + ' ' + response.url);
+                }
+            })
+        .then(data => msgElem.textContent = JSON.stringify(data, null, 4))
+    }
+
+    /**
+     * @param {jenky.Repo} repo
+     * @param {jenky.Process} proc
+     * @param {string} action
+     */
+    function postAction(repo, proc, action) {
+        const payload = {action: action};
+        fetch(`/repos/${repo.repoName}/processes/${proc.name}`, {method: 'post', body: JSON.stringify(payload)})
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json();
+                } else {
+                    alert(response.statusText + ' ' + response.url);
+                }
+            })
+            .then(data => console.log(data))
+            .then(fetchRepos)
+    }
+
+
+    function fetchRepos() {
+        fetch('/repos')
+            .then(response => response.json())
+            .then(data => {
+                setRepos(data);
+                render_repos(data);
+            })
+    }
+
+    fetchRepos()
+</script>
+</html>
