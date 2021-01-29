@@ -1,4 +1,3 @@
-. venv/Scripts/activate
-export JENKY_PROCESS_NAME=jenky_run_test
-python -i
-
+# . venv/Scripts/activate
+export JENKY_PROCESS_NAME=run_test
+python foo.py
