@@ -8,6 +8,7 @@ namespace jenky {
         repoName: string,
         gitTag: string,
         gitTags: string[],
+        gitBranches: string[],
         gitMessage: string,
         processes: Process[]
     }

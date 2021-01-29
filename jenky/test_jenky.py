@@ -1,5 +1,6 @@
+import time
 from pprint import pprint
-
+from pathlib import Path
 from jenky import util
 
 config = [
@@ -61,4 +62,29 @@ def test_find_root():
     except AssertionError:
         pass
 
-test_find_root()
+
+def test_git_branches():
+    branches = util.git_branches(Path('c:/ws/projects/VirtualPowerStorage'))
+    pprint(branches)
+
+
+def test_git_tags():
+    tags = util.git_tags(Path('c:/ws/projects/VirtualPowerStorage'))
+    pprint(tags)
+
+
+def test_run():
+    cwd = Path('.').absolute()
+    util.run(cwd, ['bash', 'p.sh'])
+    time.sleep(1)
+    util.dump_processes([cwd])
+
+
+def test_match_cmd():
+    cmd1 = ['bash', 'foo.sh']
+    cmd2 = [r'C:\\WINDOWS\\system32\\wsl.exe', '-e', '/bin/bash', 'foo.sh']
+    assert util.match_cmd(cmd1, cmd2)
+
+
+util.git_cmd = 'C:/ws/tools/PortableGit/bin/git.exe'
+test_match_cmd()

@@ -24,7 +24,7 @@
     <thead>
     <tr>
         <th>Repo Name</th>
-        <th>Git Pull</th>
+        <th>Git Actions</th>
         <th>Process Name</th>
         <th>Running</th>
         <th>Create Time</th>
@@ -38,7 +38,7 @@
 <template id="processRow">
     <tr>
         <td>Repo Name</td>
-        <td><input type="radio" name="process"></td>
+        <td><label><input type="radio" name="process"></label></td>
         <td>Process Name</td>
         <td>Running</td>
         <td>Create Time</td>
@@ -56,7 +56,13 @@
     <form>
         <code id="repoName"></code> current tag is <code id="gitTag"></code>
         <div>
-            <select id="gitTags"></select>
+            <select id="checkoutSrc" size=20>
+                <optgroup id="gitTags" label="Tags">
+                </optgroup>
+                <optgroup id="gitBranches" label="Branches">
+                </optgroup>
+            </select>
+
             <button id="checkout" type="button" disabled>Checkout</button>
         </div>
         <pre id="gitMessage"></pre>
@@ -71,31 +77,36 @@
     let reposByName;
 
     /**
-     * @param{jenky.Repo[]} repos
      */
-    function render_repos(repos) {
+    function renderRepos() {
         const tbody = document.getElementById('repos');
         tbody.textContent = '';
         const template = document.getElementById('processRow');
         for (const repo of repos) {
-            for (const [index, proc] of repo.processes.entries()) {
+            const name = repo.repoName;
+            for (const proc of repo.processes) {
                 let tr = template.content.firstElementChild.cloneNode(true);
                 let td = tr.firstElementChild;
                 td.textContent = repo.repoName;
 
-
                 td = td.nextElementSibling;
                 td.firstElementChild.value = repo.repoName;
-                td.firstElementChild.addEventListener('change', evt => render_repo(evt.target.value));
+                td.firstElementChild.addEventListener('change', () => {
+                    fetchRepo(name)
+                    .then(repo => {
+                        reposByName[name] = repo;
+                        renderRepo(name);
+                    })
+                });
 
                 td = td.nextElementSibling;
                 td.textContent = proc.name;
 
                 td = td.nextElementSibling;
-                td.textContent = proc.running;
+                td.textContent = String(proc.running);
 
                 td = td.nextElementSibling;
-                td.textContent = proc.createTime?new Date(proc.createTime * 1000).toISOString():'';
+                td.textContent = proc.createTime ? new Date(proc.createTime * 1000).toISOString() : '';
 
                 td = td.nextElementSibling;   // Kill
                 td.firstElementChild.disabled = !proc.running;
@@ -113,20 +124,30 @@
     /**
      * @param {string} repoName
      */
-    function render_repo(repoName) {
+    function renderRepo(repoName) {
         /** @type{HTMLSelectElement} */
-        const select = document.getElementById('gitTags');
+        const select = /** @type{HTMLSelectElement} */ document.getElementById('checkoutSrc');
         /** @type{jenky.Repo} */
         const repo = reposByName[repoName];
         document.getElementById('checkout').disabled = !repo.gitTag;
-        document.getElementById('checkout').onclick = evt => checkout(repoName, select.value);
+        document.getElementById('checkout').onclick = () => checkout(repoName, select.value);
         document.getElementById('repoName').textContent = repoName;
         document.getElementById('gitTag').textContent = (repo.gitTag ? repo.gitTag : repo.gitMessage);
-        select.textContent = '';
+
+        let optGroup = document.getElementById('gitTags');
+        optGroup.textContent = '';
         for (const tag of repo.gitTags) {
             const option = document.createElement('option');
             option.textContent = tag;
-            select.appendChild(option);
+            optGroup.appendChild(option);
+        }
+
+        optGroup = document.getElementById('gitBranches');
+        optGroup.textContent = '';
+        for (const branch of repo.gitBranches) {
+            const option = document.createElement('option');
+            option.textContent = branch;
+            optGroup.appendChild(option);
         }
 
     }
@@ -174,7 +195,18 @@
                     msgElem.textContent = (response.statusText + ' ' + response.url);
                 }
             })
-        .then(data => msgElem.textContent = JSON.stringify(data, null, 4))
+            .then(data => msgElem.textContent = JSON.stringify(data, null, 4))
+    }
+
+    function fetchRepo(repoName) {
+        return fetch(`/repos/${repoName}`)
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json();
+                } else {
+                    alert(response.statusText + ' ' + response.url);
+                }
+            })
     }
 
     /**
@@ -201,8 +233,8 @@
         fetch('/repos')
             .then(response => response.json())
             .then(data => {
-                setRepos(data);
-                render_repos(data);
+                setRepos(data['repos']);
+                renderRepos();
             })
     }
 
