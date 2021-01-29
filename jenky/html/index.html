@@ -19,7 +19,7 @@
     </style>
 </head>
 <body>
-<h1>Jenky, The gentle deploying utility</h1>
+<h1>Jenky, the gentle deploying utility</h1>
 <table>
     <thead>
     <tr>
@@ -46,7 +46,7 @@
             <button type="button">Kill</button>
         </td>
         <td>
-            <button type="button">Restart</button>
+            <button type="button">Start</button>
         </td>
     </tr>
 </template>
@@ -99,11 +99,11 @@
 
                 td = td.nextElementSibling;   // Kill
                 td.firstElementChild.disabled = !proc.running;
-                td.firstElementChild.onclick = evt => kill(repo, proc);
+                td.firstElementChild.onclick = evt => kill(evt, repo, proc);
 
                 td = td.nextElementSibling;  // Restart
                 td.firstElementChild.disabled = proc.running;
-                td.firstElementChild.onclick = evt => restart(repo, proc);
+                td.firstElementChild.onclick = evt => restart(evt, repo, proc);
 
                 tbody.appendChild(tr);
             }
@@ -143,18 +143,22 @@
     }
 
     /**
+     * @param {Event} evt
      * @param {jenky.Repo} repo
      * @param {jenky.Process} proc
      */
-    function kill(repo, proc) {
+    function kill(evt, repo, proc) {
+        evt.target.disabled = true;
         postAction(repo, proc, 'kill');
     }
 
     /**
+     * @param {Event} evt
      * @param {jenky.Repo} repo
      * @param {jenky.Process} proc
      */
-    function restart(repo, proc) {
+    function restart(evt, repo, proc) {
+        evt.target.disabled = true;
         postAction(repo, proc, 'restart');
     }
 
