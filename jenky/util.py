@@ -155,7 +155,7 @@ def run(cwd: Path, cmd: List[str]):
 
     popen = subprocess.Popen(
         cmd,
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        # stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         cwd=p,
         **kwargs)
     del popen
