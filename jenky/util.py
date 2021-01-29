@@ -12,6 +12,9 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
+# git_cmd = 'C:/ws/tools/PortableGit/bin/git.exe'
+git_cmd = 'git'
+
 
 def fill_process_running(config: List[dict], action):
     procs_by_name = {}
@@ -63,7 +66,7 @@ def git_tag(cwd: Path) -> str:
     p = Path(__file__).parent.parent.parent / cwd
     print(p.as_posix())
     proc = subprocess.run(
-        ['C:/ws/tools/PortableGit/bin/git.exe', 'describe', '--tags'],
+        [git_cmd, 'describe', '--tags'],
         cwd=p,
         capture_output=True)
 
@@ -87,7 +90,7 @@ def git_tags(cwd: Path) -> List[str]:
     p = Path(__file__).parent.parent.parent / cwd
     print(p.as_posix())
     proc = subprocess.run(
-        ['C:/ws/tools/PortableGit/bin/git.exe', 'tag', '--sort', 'version:refname'],
+        [git_cmd, 'tag', '--sort', 'version:refname'],
         cwd=p,
         capture_output=True)
 
@@ -114,7 +117,7 @@ def git_pull(repo: dict, target_tag: str) -> str:
     p = Path(__file__).parent.parent.parent / repo['directory']
     print(p.as_posix())
     proc = subprocess.run(
-        ['C:/ws/tools/PortableGit/bin/git.exe', 'fetch'],
+        [git_cmd, 'fetch'],
         cwd=p,
         capture_output=True)
 
@@ -122,7 +125,7 @@ def git_pull(repo: dict, target_tag: str) -> str:
 
     if repo['gitTag'] != target_tag:
         proc = subprocess.run(
-            ['C:/ws/tools/PortableGit/bin/git.exe', 'checkout', target_tag],
+            [git_cmd, 'checkout', target_tag],
             cwd=p,
             capture_output=True)
         message += '\n' + str(proc.stdout, encoding='ascii').rstrip()
@@ -133,9 +136,29 @@ def git_pull(repo: dict, target_tag: str) -> str:
 def run(cwd: Path, cmd: List[str]):
     p = Path(__file__).parent.parent.parent / cwd
     print(p.as_posix())
-    subprocess.Popen(
+    kwargs = {}
+    if sys.platform == 'win32':
+        # from msdn [1]
+        CREATE_NEW_PROCESS_GROUP = 0x00000200  # note: could get it from subprocess
+        DETACHED_PROCESS = 0x00000008  # 0x8 | 0x200 == 0x208
+        DETACHED_PROCESS = getattr(subprocess, 'CREATE_BREAKAWAY_FROM_JOB', 0x00000008)
+        # startupinfo = subprocess.STARTUPINFO()
+        # startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        # kwargs['startupinfo'] = startupinfo
+
+        kwargs.update(creationflags=subprocess.CREATE_NO_WINDOW)  #CREATE_NEW_PROCESS_GROUP DETACHED_PROCESS | subprocess.CREATE_BREAKAWAY_FROM_JOB)
+
+    else:  # Python 3.2+ and Unix
+        kwargs.update(start_new_session=True)
+
+    pprint(kwargs)
+
+    popen = subprocess.Popen(
         cmd,
-        cwd=p)
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        cwd=p,
+        **kwargs)
+    del popen
 
 
 def kill(config: List[dict], repo_id: str, process_id: str):
