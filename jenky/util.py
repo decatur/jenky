@@ -1,7 +1,7 @@
 # Note: FastApi does not support asyncio subprocesses, so do not use it!
 import logging
+import os
 from pathlib import Path
-from pprint import pprint
 from typing import List
 import subprocess
 
@@ -19,6 +19,7 @@ base_url: Path
 class Process(BaseModel):
     name: str
     cmd: List[str]
+    env: dict
     running: bool
     create_time: float = Field(..., alias='createTime')
 
@@ -38,48 +39,75 @@ class Config(BaseModel):
     git_cmd: str
 
 
-def fill_process_running(repos: List[Repo], action):
-    procs_by_name = {}
-    for proc in psutil.process_iter(attrs=None, ad_value=None):
-        d = proc.as_dict(attrs=['pid', 'ppid', 'name', 'cwd', 'exe', 'username', 'cmdline', 'create_time', 'environ'],
-                         ad_value=None)
-        if 'username' in d and d.get('cwd', None):
-            # print(f'{proc.name()} {proc.pid} {proc.ppid()} {cmd}')
-            # pprint(d)
-            # print(proc.cmdline())
-            # line = proc.cmdline()
-            for repo in repos:
-                repo_dir = base_url / repo.directory
+def running_processes(repos: List[Repo]):
+    for repo in repos:
+        for proc in repo.processes:
+            proc.running = False
+            pid_file = base_url / repo.directory / (proc.name + '.pid')
+            if not pid_file.is_file():
+                continue
 
-                for process in repo.processes:
-                    # cmd_pattern = process['cmdPattern']
-                    # index = cmd_pattern['index']
-                    # if len(line) > index and cmd_pattern['pattern'] in line[index]:
-                    name = process.name
-                    # print(Path(d['cwd']))
-                    # print(p)
-                    if Path(d['cwd']).samefile(repo_dir) and match_cmd(process.cmd, d['cmdline']):
-                        if name not in procs_by_name:
-                            procs_by_name[name] = dict(process=process, procs=[])
-                        d['proc'] = proc
-                        procs_by_name[name]['procs'].append(d)
+            pid = int(pid_file.read_text())
+            try:
+                p = psutil.Process(pid)
+                proc.running = p.is_running()
+            except psutil.NoSuchProcess:
+                logger.exception(f'Cannot read {pid_file}')
+                proc.running = False
 
-    print('############### procs_by_name')
-    pprint(procs_by_name.keys())
+# def running_processes_(repos: List[Repo]) -> Dict[Tuple[str, str], ProcessInfo]:
+#     procs_by_name = {}
+#     for proc in psutil.process_iter(attrs=None, ad_value=None):
+#         d = proc.as_dict(attrs=['pid', 'ppid', 'name', 'cwd', 'exe', 'username', 'cmdline', 'create_time', 'environ'],
+#                          ad_value=None)
+#         if 'username' in d and d.get('cwd', None):
+#             for repo in repos:
+#                 repo_dir = base_url / repo.directory
+#
+#                 for process in repo.processes:
+#                     name = process.name
+#                     if Path(d['cwd']).samefile(repo_dir) and match_cmd(process.cmd, d['cmdline']):
+#                         assert name not in procs_by_name
+#                         info = ProcessInfo()
+#                         info.create_time = d['create_time']
+#                         info.popen = Process
+#                         procs_by_name[name] = info
+#
+#     return procs_by_name
 
-    for name, info in procs_by_name.items():
-        root = find_root(info['procs'])
-        action(info['process'], root, root['proc'])
 
-
-def dump_processes(dirs: List[Path]):
-    for proc in psutil.process_iter(attrs=None, ad_value=None):
-        proc: psutil.Process = proc
-        d = proc.as_dict(attrs=['pid', 'ppid', 'name', 'cwd', 'exe', 'username', 'cmdline', 'create_time'],
-                         ad_value=None)
-        # d = proc.as_dict(ad_value=None)
-        if 'username' in d and d.get('cwd', None) and Path(d['cwd']) in dirs:
-            pprint(d)
+# def fill_process_running(repos: List[Repo], action):
+#     procs_by_name = {}
+#     for proc in psutil.process_iter(attrs=None, ad_value=None):
+#         d = proc.as_dict(attrs=['pid', 'ppid', 'name', 'cwd', 'exe', 'username', 'cmdline', 'create_time', 'environ'],
+#                          ad_value=None)
+#         if 'username' in d and d.get('cwd', None):
+#             # print(f'{proc.name()} {proc.pid} {proc.ppid()} {cmd}')
+#             # pprint(d)
+#             # print(proc.cmdline())
+#             # line = proc.cmdline()
+#             for repo in repos:
+#                 repo_dir = base_url / repo.directory
+#
+#                 for process in repo.processes:
+#                     # cmd_pattern = process['cmdPattern']
+#                     # index = cmd_pattern['index']
+#                     # if len(line) > index and cmd_pattern['pattern'] in line[index]:
+#                     name = process.name
+#                     # print(Path(d['cwd']))
+#                     # print(p)
+#                     if Path(d['cwd']).samefile(repo_dir) and match_cmd(process.cmd, d['cmdline']):
+#                         if name not in procs_by_name:
+#                             procs_by_name[name] = dict(process=process, procs=[])
+#                         d['proc'] = proc
+#                         procs_by_name[name]['procs'].append(d)
+#
+#     print('############### procs_by_name')
+#     pprint(procs_by_name.keys())
+#
+#     for name, info in procs_by_name.items():
+#         root = find_root(info['procs'])
+#         action(info['process'], root, root['proc'])
 
 
 def git_tag(git_dir: Path) -> str:
@@ -152,18 +180,20 @@ def fill_git_branches(repo: Repo):
         repo.git_message = str(e)
 
 
-def git_fetch(repo: Repo) -> str:
+def git_pull(repo: Repo) -> str:
     """
-    git fetch
+    git pull
     """
     git_dir = base_url / repo.directory
-    logger.debug(git_dir)
+    cmd = [git_cmd, 'pull']
+    logger.debug(f'{git_dir} {cmd}')
     proc = subprocess.run(
-        [git_cmd, 'fetch'],
+        cmd,
         cwd=git_dir.as_posix(),
         capture_output=True)
 
-    message = str(proc.stdout, encoding='ascii').rstrip()
+    message = str(proc.stderr, encoding='ascii').rstrip()
+    message += str(proc.stdout, encoding='ascii').rstrip()
 
     # if repo.git_tag != target_tag:
     #     proc = subprocess.run(
@@ -175,34 +205,38 @@ def git_fetch(repo: Repo) -> str:
     return message
 
 
-def run(cwd: Path, cmd: List[str]):
-    logger.debug(cwd)
+def run(name: str, cwd: Path, cmd: List[str], env: dict):
+    logger.debug(cmd)
+    my_env = os.environ
+    my_env.update(env)
     kwargs = {}
     kwargs.update(start_new_session=True)
-    logger.error('Rename foo....')
-    print('##############>')
-    subprocess.Popen(
+    pid = subprocess.Popen(
         cmd,
-        stdout=open('foo.out', 'w'),
-        stderr=open('foo.err', 'w'),
+        stdout=open((cwd / f'{name}.out').as_posix(), 'w'),
+        stderr=open((cwd / f'{name}.err').as_posix(), 'w'),
         # stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         cwd=cwd.as_posix(),
-        **kwargs)
-    print('<##############')
+        env=my_env,
+        **kwargs).pid
+
+    pid_file = base_url / cwd / (name + '.pid')
+    pid_file.write_text(str(pid))
 
 
 def kill(repos: List[Repo], repo_id: str, process_id: str):
-
-    def kill_callback(process: Process, info, proc):
-        if process.name != process_id:
-            return
-        logger.warning(f'Killing {process_id} {info["pid"]}')
-        proc.terminate()
-        gone, alive = psutil.wait_procs([proc], timeout=3, callback=None)
-        for p in alive:
-            p.kill()
-
-    fill_process_running(repos, kill_callback)
+    repo = repo_by_id(repos, repo_id)
+    procs = [proc for proc in repo.processes if proc.name == process_id]
+    if not procs:
+        raise ValueError(repo_id)
+    proc = procs[0]
+    pid_file = base_url / repo.directory / (proc.name + '.pid')
+    pid = int(pid_file.read_text())
+    proc = psutil.Process(pid)
+    proc.terminate()
+    gone, alive = psutil.wait_procs([proc], timeout=3, callback=None)
+    for p in alive:
+        p.kill()
 
 
 def repo_by_id(repos: List[Repo], repo_id: str) -> Repo:
@@ -217,7 +251,8 @@ def restart(repos: List[Repo], repo_id: str, process_id: str):
     procs = [proc for proc in repo.processes if proc.name == process_id]
     if not procs:
         raise ValueError(repo_id)
-    run(base_url / repo.directory, procs[0].cmd)
+    proc = procs[0]
+    run(proc.name, base_url / repo.directory, proc.cmd, proc.env)
 
 
 def find_root(procs: List[dict]):
@@ -232,26 +267,3 @@ def find_root(procs: List[dict]):
             assert len(parents) == 1
 
     return parent
-
-
-def match_cmd(cmd1: List[str], cmd2: List[str]) -> bool:
-    return cmd1 == cmd2
-
-    # cmd = ['bash', 'foo.sh']
-    # Windows =>
-    #    Parent: ['bash', 'foo.sh']
-    #        Child:  ['C:\\WINDOWS\\system32\\wsl.exe', '-e', '/bin/bash', 'foo.sh']
-    # Unix => ['bash', 'foo.sh']
-
-    # if len(cmd1) > len(cmd2):
-    #     cmd1 = cmd1[len(cmd1) - len(cmd2):]
-    # elif len(cmd2) > len(cmd1):
-    #     cmd2 = cmd2[len(cmd2) - len(cmd1):]
-    #
-    # if cmd1[0] != 'bash' and not re.match(r'.*/bash$', cmd1[0]):
-    #     return False
-    #
-    # if cmd2[0] != 'bash' and not re.match(r'.*/bash$', cmd2[0]):
-    #     return False
-    #
-    # return cmd1[1:] == cmd2[1:]

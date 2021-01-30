@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from starlette.responses import RedirectResponse
 
 from jenky import util
-from jenky.util import Config, Process, Repo
+from jenky.util import Config, Repo
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -28,16 +28,7 @@ def get_root():
 
 @app.get("/repos")
 def get_repos() -> Config:
-    for repo in config.repos:
-        for process in repo.processes:
-            process.running = False
-
-    def action(p: Process, info, proc):
-        p.running = proc.is_running()
-        logger.debug(f'Process {p.name} {info["pid"]} is running {p.running}')
-        p.create_time = info['create_time']
-
-    util.fill_process_running(config.repos, action)
+    util.running_processes(config.repos)
     return config
 
 
@@ -74,9 +65,9 @@ class GitAction(BaseModel):
 
 @app.post("/repos/{repo_id}")
 def post_repo(repo_id: str, action: GitAction):
-    if action.action == 'checkout':
+    if action.action == 'pull':
         repo = util.repo_by_id(config.repos, repo_id)
-        message = util.git_fetch(repo)  # , target_tag=action.gitTag)
+        message = util.git_pull(repo)  # , target_tag=action.gitTag)
     else:
         assert False, 'Invalid action ' + action.action
 
