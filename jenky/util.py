@@ -159,16 +159,39 @@ def git_pull(repo: Repo) -> str:
 
 
 def run(name: str, cwd: Path, cmd: List[str], env: dict):
-    logger.debug(cmd)
+    logger.debug(f'Running: {" ".join(cmd)}')
     my_env = os.environ
     my_env.update(env)
     kwargs = {}
-    kwargs.update(start_new_session=True)
+
+    # subprocess.DETACHED_PROCESS: Open console window
+    # subprocess.CREATE_NEW_PROCESS_GROUP  Only this will not detach
+    # subprocess.CREATE_BREAKAWAY_FROM_JOB Only this will not detach
+    # Both CREATE_NEW_PROCESS_GROUP and CREATE_BREAKAWAY_FROM_JOB will not detach
+    # CREATE_NEW_CONSOLE
+    # CREATE_NO_WINDOW(i.e.new
+
+    # Does not work
+    # creationflags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW
+    # creationflags = subprocess.CREATE_NEW_CONSOLE
+    creationflags = subprocess.DETACHED_PROCESS  # Opens console window
+    # creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW # Also opens console window
+    # creationflags = subprocess.CREATE_BREAKAWAY_FROM_JOB
+    #creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP #| subprocess.CREATE_NO_WINDOW
+    kwargs['close_fds']: True
+    if os.name == 'nt':
+        pass
+        #kwargs.update(creationflags=creationflags)
+        #kwargs['close_fds']: True
+    else:
+        kwargs.update(start_new_session=True)
+
     pid = subprocess.Popen(
         cmd,
+        stdin=subprocess.DEVNULL,
         stdout=open((cwd / f'{name}.out').as_posix(), 'w'),
         stderr=open((cwd / f'{name}.err').as_posix(), 'w'),
-        # stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        # stdin=None, stdout=None, stderr=None,
         cwd=cwd.as_posix(),
         env=my_env,
         **kwargs).pid
@@ -185,7 +208,12 @@ def kill(repos: List[Repo], repo_id: str, process_id: str):
     proc = procs[0]
     pid_file = base_url / repo.directory / (proc.name + '.pid')
     pid = int(pid_file.read_text())
-    proc = psutil.Process(pid)
+    try:
+        proc = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        logger.warning(f'No such process with pid {pid}')
+        return
+
     proc.terminate()
     gone, alive = psutil.wait_procs([proc], timeout=3, callback=None)
     for p in alive:
@@ -225,7 +253,7 @@ def get_tail(path: Path) -> List[str]:
     logger.debug(path)
     with open(path.as_posix(), "rb") as f:
         try:
-            f.seek(-10*1024, os.SEEK_END)
+            f.seek(-50*1024, os.SEEK_END)
             byte_lines = f.readlines()
             if len(byte_lines):
                 byte_lines = byte_lines[1:]

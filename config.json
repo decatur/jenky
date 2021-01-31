@@ -1,5 +1,5 @@
 {
-  "git_cmd": "C:/ws/tools/PortableGit/bin/git.exe",
+  "git_cmd": "C:/ws/tools/git/bin/git.exe",
   "repos": [
     {
       "repoName": "jenky",
