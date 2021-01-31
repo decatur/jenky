@@ -44,7 +44,7 @@ def running_processes(repos: List[Repo]):
         for proc in repo.processes:
             proc.running = False
             pid_file = base_url / repo.directory / (proc.name + '.pid')
-            if not pid_file.is_file():
+            if not pid_file.exists():
                 continue
 
             pid = int(pid_file.read_text())
