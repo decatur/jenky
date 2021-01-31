@@ -44,15 +44,22 @@ def running_processes(repos: List[Repo]):
         for proc in repo.processes:
             proc.running = False
             pid_file = base_url / repo.directory / (proc.name + '.pid')
+            logger.debug(f'{pid_file}')
             if not pid_file.exists():
+                logger.debug(f'Skipping {pid_file}')
                 continue
 
-            pid = int(pid_file.read_text())
+            try:
+                pid = int(pid_file.read_text())
+            except Exception as e:
+                logger.exception('Reading pid file')
+                raise e
+
             try:
                 p = psutil.Process(pid)
                 proc.running = p.is_running()
             except psutil.NoSuchProcess:
-                logger.exception(f'Cannot read {pid_file}')
+                logger.debug(f'No such proccess {pid_file} {pid}')
                 proc.running = False
 
 

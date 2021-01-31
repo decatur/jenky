@@ -144,7 +144,7 @@
         const select = /** @type{HTMLSelectElement} */ document.getElementById('checkoutSrc');
         /** @type{jenky.Repo} */
         const repo = reposByName[repoName];
-        document.getElementById('pull').disabled = !repo.gitTag;
+        // document.getElementById('pull').disabled = !repo.gitTag;
         document.getElementById('pull').onclick = () => pull(repoName, select.value);
         document.getElementById('repoName').textContent = repoName;
         document.getElementById('gitTag').textContent = (repo.gitTag ? repo.gitTag : repo.gitMessage);
