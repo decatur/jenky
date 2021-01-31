@@ -55,60 +55,6 @@ def running_processes(repos: List[Repo]):
                 logger.exception(f'Cannot read {pid_file}')
                 proc.running = False
 
-# def running_processes_(repos: List[Repo]) -> Dict[Tuple[str, str], ProcessInfo]:
-#     procs_by_name = {}
-#     for proc in psutil.process_iter(attrs=None, ad_value=None):
-#         d = proc.as_dict(attrs=['pid', 'ppid', 'name', 'cwd', 'exe', 'username', 'cmdline', 'create_time', 'environ'],
-#                          ad_value=None)
-#         if 'username' in d and d.get('cwd', None):
-#             for repo in repos:
-#                 repo_dir = base_url / repo.directory
-#
-#                 for process in repo.processes:
-#                     name = process.name
-#                     if Path(d['cwd']).samefile(repo_dir) and match_cmd(process.cmd, d['cmdline']):
-#                         assert name not in procs_by_name
-#                         info = ProcessInfo()
-#                         info.create_time = d['create_time']
-#                         info.popen = Process
-#                         procs_by_name[name] = info
-#
-#     return procs_by_name
-
-
-# def fill_process_running(repos: List[Repo], action):
-#     procs_by_name = {}
-#     for proc in psutil.process_iter(attrs=None, ad_value=None):
-#         d = proc.as_dict(attrs=['pid', 'ppid', 'name', 'cwd', 'exe', 'username', 'cmdline', 'create_time', 'environ'],
-#                          ad_value=None)
-#         if 'username' in d and d.get('cwd', None):
-#             # print(f'{proc.name()} {proc.pid} {proc.ppid()} {cmd}')
-#             # pprint(d)
-#             # print(proc.cmdline())
-#             # line = proc.cmdline()
-#             for repo in repos:
-#                 repo_dir = base_url / repo.directory
-#
-#                 for process in repo.processes:
-#                     # cmd_pattern = process['cmdPattern']
-#                     # index = cmd_pattern['index']
-#                     # if len(line) > index and cmd_pattern['pattern'] in line[index]:
-#                     name = process.name
-#                     # print(Path(d['cwd']))
-#                     # print(p)
-#                     if Path(d['cwd']).samefile(repo_dir) and match_cmd(process.cmd, d['cmdline']):
-#                         if name not in procs_by_name:
-#                             procs_by_name[name] = dict(process=process, procs=[])
-#                         d['proc'] = proc
-#                         procs_by_name[name]['procs'].append(d)
-#
-#     print('############### procs_by_name')
-#     pprint(procs_by_name.keys())
-#
-#     for name, info in procs_by_name.items():
-#         root = find_root(info['procs'])
-#         action(info['process'], root, root['proc'])
-
 
 def git_tag(git_dir: Path) -> str:
     logger.debug(git_dir)
@@ -255,15 +201,34 @@ def restart(repos: List[Repo], repo_id: str, process_id: str):
     run(proc.name, base_url / repo.directory, proc.cmd, proc.env)
 
 
-def find_root(procs: List[dict]):
-    parent = None
-    for proc in procs:
-        parents = [p for p in procs if p['pid'] == proc['ppid']]
+# def find_root(procs: List[dict]):
+#     parent = None
+#     for proc in procs:
+#         parents = [p for p in procs if p['pid'] == proc['ppid']]
+#
+#         if not parents:
+#             assert parent is None
+#             parent = proc
+#         else:
+#             assert len(parents) == 1
+#
+#     return parent
 
-        if not parents:
-            assert parent is None
-            parent = proc
-        else:
-            assert len(parents) == 1
-
-    return parent
+def get_tail(path: Path) -> List[str]:
+    logger.debug(path)
+    with open(path.as_posix(), "rb") as f:
+        try:
+            f.seek(-10*1024, os.SEEK_END)
+            byte_lines = f.readlines()
+            if len(byte_lines):
+                byte_lines = byte_lines[1:]
+            else:
+                # So we are in the middle of a line and could hit a composed unicode character.
+                # But we just ignore that...
+                pass
+        except:
+            # file size too short
+            f.seek(0)
+            byte_lines = f.readlines()
+    lines = [str(byte_line, encoding='utf8') for byte_line in byte_lines]
+    return lines

@@ -1,19 +1,25 @@
-[
+{
+  "git_cmd": "C:/ws/tools/PortableGit/bin/git.exe",
+  "repos": [
     {
-        "repoName": "jenky",
-        "directory": "jenky",
-        "gitTag": "...",
-        "gitTags": ["..."],
-        "processes": [
-            {
-                "name": "jenky_run_test",
-                "cmd": ["C:/ws/tools/PortableGit/git-bash.exe", "run_test.sh"],
-                "running": null,
-                "cmdPattern": {
-                    "index": 10,
-                    "pattern": "jenky"
-                }
-            }
-        ]
+      "repoName": "jenky",
+      "directory": ".",
+      "gitTag": "",
+      "gitTags": [],
+      "gitBranches": [],
+      "gitMessage": "",
+      "processes": [
+        {
+          "name": "run_test",
+          "cmd": [
+            "venv/Scripts/python.exe",
+            "foo.py"
+          ],
+          "env": {},
+          "running": false,
+          "createTime": 0
+        }
+      ]
     }
-]
+  ]
+}

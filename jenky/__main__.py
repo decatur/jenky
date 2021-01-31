@@ -3,26 +3,29 @@ import logging
 import sys
 import time
 from pathlib import Path
+from typing import List
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from jenky import util
-from jenky.util import Config, Repo
+from jenky.util import Config, Repo, get_tail
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler(sys.stdout))
+handler = logging.StreamHandler(sys.stdout)
+handler.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s %(funcName)s - %(message)s')
+logger.addHandler(handler)
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="jenky/html"), name="mymountname")
 
 
 @app.get("/")
-def get_root():
+def home():
     return RedirectResponse(url='/static/index.html')
 
 
@@ -56,6 +59,15 @@ def post_process(repo_id: str, process_id: str, action: Action):
         assert False, 'Invalid action ' + action.action
 
     return dict(repo_id=repo_id, process_id=process_id, action=action.action)
+
+
+@app.get("/repos/{repo_id}/processes/{process_id}/{std_x}")
+def get_process_log(repo_id: str, process_id: str, std_x: str) -> Response:
+    repo = util.repo_by_id(config.repos, repo_id)
+    path = util.base_url / repo.directory / f'{process_id}.{std_x[3:]}'
+
+    lines = get_tail(path)
+    return Response(content=''.join(lines), media_type="text/plain")
 
 
 class GitAction(BaseModel):

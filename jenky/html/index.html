@@ -30,6 +30,7 @@
         <th>Create Time</th>
         <th>Kill</th>
         <th>Restart</th>
+        <th>Logs</th>
     </tr>
     </thead>
     <tbody id="repos"></tbody>
@@ -47,6 +48,10 @@
         </td>
         <td>
             <button type="button">Start</button>
+        </td>
+        <td>
+            <a href="" target="">stdout</a>
+            <a href="" target="">stderr</a>
         </td>
     </tr>
 </template>
@@ -115,6 +120,16 @@
                 td = td.nextElementSibling;  // Restart
                 td.firstElementChild.disabled = proc.running;
                 td.firstElementChild.onclick = evt => restart(evt, repo, proc);
+
+                // /repos/{repo_id}/processes/{process_id}/{std}
+                td = td.nextElementSibling;
+                let a = td.firstElementChild;
+                while (a) {
+                    const std = a.textContent;
+                    a.href = `/repos/${name}/processes/${proc.name}/${std}`;
+                    a.target = `${proc.name}_${std}`
+                    a = a.nextElementSibling;
+                }
 
                 tbody.appendChild(tr);
             }

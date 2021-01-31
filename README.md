@@ -32,6 +32,22 @@ python -m jenky --config=../jenky_config.json --port=8094
 * Kill ...
 * Checkout ...
 
+# Start Processes from Shell
+
+## Unix
+
+From bash
+````shell script
+venv/Scripts/python.exe foo.py & cat $! > run_test.pid
+````
+
+## MS Windows
+
+From git bash
+````shell script
+venv/Scripts/python.exe foo.py & cat /proc/$!/winpid > run_test.pid
+````
+
 # References
 * [spotify/dh-virtualenv: Python virtualenvs in Debian packages](https://github.com/spotify/dh-virtualenv)
 * [How We Deploy Python Code | Nylas](https://www.nylas.com/blog/packaging-deploying-python/)
