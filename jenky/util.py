@@ -60,7 +60,6 @@ def running_processes(repos: List[Repo]):
                 proc.running = p.is_running()
             except psutil.NoSuchProcess:
                 logger.debug(f'No such proccess {pid_file} {pid}')
-                proc.running = False
 
 
 def git_tag(git_dir: Path) -> str:
@@ -159,7 +158,7 @@ def git_pull(repo: Repo) -> str:
 
 
 def run(name: str, cwd: Path, cmd: List[str], env: dict):
-    logger.debug(cmd)
+    logger.debug(f'Running: {" ".join(cmd)}')
     my_env = os.environ
     my_env.update(env)
     kwargs = {}
@@ -167,7 +166,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     pid = subprocess.Popen(
         cmd,
         stdout=open((cwd / f'{name}.out').as_posix(), 'w'),
-        stderr=open((cwd / f'{name}.err').as_posix(), 'w'),
+        stderr=subprocess.STDOUT,
         # stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         cwd=cwd.as_posix(),
         env=my_env,
@@ -185,7 +184,13 @@ def kill(repos: List[Repo], repo_id: str, process_id: str):
     proc = procs[0]
     pid_file = base_url / repo.directory / (proc.name + '.pid')
     pid = int(pid_file.read_text())
-    proc = psutil.Process(pid)
+
+    try:
+        proc = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        logger.warning(f'No such process with pid {pid}')
+        return
+
     proc.terminate()
     gone, alive = psutil.wait_procs([proc], timeout=3, callback=None)
     for p in alive:

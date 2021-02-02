@@ -87,6 +87,7 @@ def post_repo(repo_id: str, action: GitAction):
 
 
 config_file = 'config.json'
+host = "127.0.0.1"
 port = 8000
 
 # TODO: Use argparse
@@ -95,6 +96,8 @@ for arg in sys.argv:
         config_file = arg.split('=')[1]
     elif arg.startswith('--port='):
         port = int(arg.split('=')[1])
+    elif arg.startswith('--host='):
+        host = arg.split('=')[1]
 
 config_file = Path(config_file)
 logger.info(f'Reading config from {config_file}')
@@ -102,4 +105,4 @@ config = Config.parse_obj(json.loads(config_file.read_text(encoding='utf8')))
 util.git_cmd = config.git_cmd
 util.base_url = config_file.parent.absolute()
 
-uvicorn.run(app, host="localhost", port=port)
+uvicorn.run(app, host=host, port=port)
