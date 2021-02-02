@@ -159,6 +159,17 @@ def git_pull(repo: Repo) -> str:
 
 def run(name: str, cwd: Path, cmd: List[str], env: dict):
     logger.debug(f'Running: {" ".join(cmd)}')
+
+    if cmd[0] == 'python':
+        if os.name == 'nt':
+            executable = 'venv/Scripts/python.exe'
+        elif os.name == 'posix':
+            executable = 'venv/bin/python.exe'
+        else:
+            assert False, 'Unsupported os ' + os.name
+
+        cmd = [executable] + cmd[1:]
+
     my_env = os.environ
     my_env.update(env)
     kwargs = {}

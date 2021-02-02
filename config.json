@@ -12,8 +12,8 @@
         {
           "name": "run_test",
           "cmd": [
-            "venv/Scripts/python.exe",
-            "foo.py"
+            "python",
+            "run_test.py"
           ],
           "env": {},
           "running": false,

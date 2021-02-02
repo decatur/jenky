@@ -66,9 +66,11 @@ def post_process(repo_id: str, process_id: str, action: Action):
 def get_process_log(repo_id: str, process_id: str, std_x: str) -> Response:
     repo = util.repo_by_id(config.repos, repo_id)
     path = util.base_url / repo.directory / f'{process_id}.{std_x[3:]}'
-
-    lines = get_tail(path)
-    return Response(content=''.join(lines), media_type="text/plain")
+    if path.exists():
+        lines = get_tail(path)
+        return Response(content=''.join(lines), media_type="text/plain")
+    else:
+        return Response(content='Not Found', media_type="text/plain", status_code=404)
 
 
 class GitAction(BaseModel):
