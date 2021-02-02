@@ -189,9 +189,8 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     pid = subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,
-        stdout=open((cwd / f'{name}.out').as_posix(), 'w'),
-        stderr=open((cwd / f'{name}.err').as_posix(), 'w'),
-        # stdin=None, stdout=None, stderr=None,
+        stdout=open((cwd / f'{name}.out').as_posix(), 'w').fileno(),
+        stderr=subprocess.STDOUT,
         cwd=cwd.as_posix(),
         env=my_env,
         **kwargs).pid
