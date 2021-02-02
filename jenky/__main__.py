@@ -21,7 +21,8 @@ handler.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s %(
 logger.addHandler(handler)
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="jenky/html"), name="mymountname")
+html_root = Path(__file__).parent / 'html'
+app.mount("/static", StaticFiles(directory=html_root), name="mymountname")
 
 
 @app.get("/")
