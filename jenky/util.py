@@ -164,7 +164,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
         if os.name == 'nt':
             executable = 'venv/Scripts/python.exe'
         elif os.name == 'posix':
-            executable = 'venv/bin/python.exe'
+            executable = 'venv/bin/python'
         else:
             assert False, 'Unsupported os ' + os.name
 

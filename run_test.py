@@ -14,5 +14,7 @@ for i in range(40):
         print(f'Error: {repr(e)}', file=sys.stderr)
         traceback.print_exc()
 
+    sys.stdout.flush()
+
 print('Process exits...')
 
