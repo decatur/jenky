@@ -1,6 +1,7 @@
 """
 """
 from setuptools import setup
+package_data = {'': ['*'], 'jenky': ['html/*']}
 
 dist = setup(
     name='jenky',
@@ -10,5 +11,6 @@ dist = setup(
     packages=['jenky'],
     include_package_data=True,
     install_requires=['aiofiles', 'fastapi', 'psutil', 'uvicorn'],
-    extras_require={}
+    extras_require={},
+    package_data=package_data
 )
