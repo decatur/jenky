@@ -26,10 +26,8 @@
         <th>Repo Name</th>
         <th>Git Actions</th>
         <th>Process Name</th>
-        <th>Running</th>
-        <th>Create Time</th>
-        <th>Kill</th>
-        <th>Restart</th>
+        <th>Start/Stop Time</th>
+        <th>Action</th>
         <th>Logs</th>
     </tr>
     </thead>
@@ -38,16 +36,14 @@
 
 <template id="processRow">
     <tr>
-        <td>Repo Name</td>
+        <td>Repo Name...</td>
         <td><label><input type="radio" name="process"></label></td>
-        <td>Process Name</td>
-        <td>Running</td>
-        <td>Create Time</td>
+        <td>Process Name...</td>
+        <td>Start/Stop Time...</td>
         <td>
-            <button type="button">Kill</button>
-        </td>
-        <td>
-            <button type="button">Start</button>
+            <label style="display: inline-block"><input type="radio" name="status" value="start">Start</label>
+            <label style="display: inline-block"><input type="radio" name="status" value="transition" disabled>Provisioning...</label>
+            <label style="display: inline-block"><input type="radio" name="status" value="stop">Stop</label>
         </td>
         <td>
             <a href="" target="">stdout</a>
@@ -61,7 +57,7 @@
     <form>
         <code id="repoName"></code> current tag is <code id="gitTag"></code>
         <div>
-            <select id="checkoutSrc" size=20>
+            <label for="checkoutSrc"></label><select id="checkoutSrc" size=20>
                 <optgroup id="gitTags" label="Tags">
                 </optgroup>
                 <optgroup id="gitBranches" label="Branches">
@@ -108,18 +104,26 @@
                 td.textContent = proc.name;
 
                 td = td.nextElementSibling;
-                td.textContent = String(proc.running);
-
-                td = td.nextElementSibling;
                 td.textContent = proc.createTime ? new Date(proc.createTime * 1000).toISOString() : '';
 
-                td = td.nextElementSibling;   // Kill
-                td.firstElementChild.disabled = !proc.running;
-                td.firstElementChild.onclick = evt => kill(evt, repo, proc);
-
-                td = td.nextElementSibling;  // Restart
-                td.firstElementChild.disabled = proc.running;
-                td.firstElementChild.onclick = evt => restart(evt, repo, proc);
+                td = td.nextElementSibling;   // Status
+                let transition;
+                for (const input of td.querySelectorAll('input')) {
+                    if (input.value === 'start') input.checked = proc.running;
+                    else if (input.value === 'stop') input.checked = !proc.running;
+                    else transition = input;
+                    input.addEventListener('change', (evt) => {
+                        const targetValue = evt.target.value;
+                        transition.checked = true;
+                        if (targetValue === 'stop') {
+                            kill(evt, repo, proc);
+                        } else if (targetValue === 'start') {
+                            restart(evt, repo, proc);
+                        } else {
+                            console.assert(false)
+                        }
+                    });
+                }
 
                 // /repos/{repo_id}/processes/{process_id}/{std}
                 td = td.nextElementSibling;
@@ -127,7 +131,7 @@
                 while (a) {
                     const std = a.textContent;
                     a.href = `/repos/${name}/processes/${proc.name}/${std}`;
-                    a.target = `${proc.name}_${std}`
+                    a.target = `${proc.name}_${std}`;
                     a = a.nextElementSibling;
                 }
 
