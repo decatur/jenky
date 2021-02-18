@@ -55,7 +55,9 @@ class Action(BaseModel):
 @app.post("/repos/{repo_id}/processes/{process_id}")
 def post_process(repo_id: str, process_id: str, action: Action):
     if action.action == 'kill':
-        util.kill(config.repos, repo_id, process_id)
+        killed = util.kill(config.repos, repo_id, process_id)
+        if not killed:
+            return Response(content='Process was not running', media_type="text/plain", status_code=404)
     elif action.action == 'restart':
         util.restart(config.repos, repo_id, process_id)
         time.sleep(1)

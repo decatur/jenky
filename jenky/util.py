@@ -214,7 +214,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     del popen
 
 
-def kill(repos: List[Repo], repo_id: str, process_id: str):
+def kill(repos: List[Repo], repo_id: str, process_id: str) -> bool:
     repo = repo_by_id(repos, repo_id)
     procs = [proc for proc in repo.processes if proc.name == process_id]
     if not procs:
@@ -226,12 +226,14 @@ def kill(repos: List[Repo], repo_id: str, process_id: str):
         proc = psutil.Process(pid)
     except psutil.NoSuchProcess:
         logger.warning(f'No such process with pid {pid}')
-        return
+        return False
 
     proc.terminate()
     gone, alive = psutil.wait_procs([proc], timeout=3, callback=None)
     for p in alive:
         p.kill()
+
+    return True
 
 
 def repo_by_id(repos: List[Repo], repo_id: str) -> Repo:

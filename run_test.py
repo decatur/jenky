@@ -4,7 +4,7 @@ import traceback
 
 import starlette  # So we know that packages are set up correctly
 
-for i in range(40):
+for i in range(10):
     print(i)
     time.sleep(1)
     try:
