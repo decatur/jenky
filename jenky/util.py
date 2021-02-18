@@ -159,30 +159,32 @@ def git_pull(repo: Repo, target: str) -> str:
     # TODO: git checkout tags/0.0.2
     """
     git_dir = base_url / repo.directory
+    messages = []
 
     if target.startswith('tags/'):
         cmd = [git_cmd, 'checkout', target]
         logger.debug(f'{git_dir} {cmd}')
         proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
-        message = str(proc.stderr, encoding='ascii').rstrip()
-        message += str(proc.stdout, encoding='ascii').rstrip()
+        messages.append(str(proc.stderr, encoding='ascii').rstrip())
+        messages.append(str(proc.stdout, encoding='ascii').rstrip())
         if proc.returncode == 1:
-            return message
+            return '\n'.join(messages)
     else:
+        # TODO: Yet this is the same as tag; Same command?
         cmd = [git_cmd, 'checkout', target]
         logger.debug(f'{git_dir} {cmd}')
         proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
-        message = str(proc.stderr, encoding='ascii').rstrip()
-        message += str(proc.stdout, encoding='ascii').rstrip()
+        messages.append(str(proc.stderr, encoding='ascii').rstrip())
+        messages.append(str(proc.stdout, encoding='ascii').rstrip())
         if proc.returncode == 1:
-            return message
+            return '\n'.join(messages)
 
     cmd = [git_cmd, 'pull']
     logger.debug(f'{git_dir} {cmd}')
     proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
 
-    message += str(proc.stderr, encoding='ascii').rstrip()
-    message += str(proc.stdout, encoding='ascii').rstrip()
+    messages.append(str(proc.stderr, encoding='ascii').rstrip())
+    messages.append(str(proc.stdout, encoding='ascii').rstrip())
 
     # if repo.git_tag != target_tag:
     #     proc = subprocess.run(
@@ -191,7 +193,7 @@ def git_pull(repo: Repo, target: str) -> str:
     #         capture_output=True)
     #     message += '\n' + str(proc.stdout, encoding='ascii').rstrip()
 
-    return message
+    return '\n'.join(messages)
 
 
 def run(name: str, cwd: Path, cmd: List[str], env: dict):
