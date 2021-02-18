@@ -43,6 +43,7 @@ def running_processes(repos: List[Repo]):
     for repo in repos:
         for proc in repo.processes:
             proc.running = False
+            proc.create_time = None
             pid_file = base_url / repo.directory / (proc.name + '.pid')
             logger.debug(f'{pid_file}')
             if not pid_file.exists():
@@ -52,14 +53,15 @@ def running_processes(repos: List[Repo]):
             try:
                 pid = int(pid_file.read_text())
             except Exception as e:
-                logger.exception('Reading pid file')
+                logger.exception(f'Reading pid file {pid_file}')
                 raise e
 
             try:
                 p = psutil.Process(pid)
                 proc.running = p.is_running()
+                proc.create_time = p.create_time()
             except psutil.NoSuchProcess:
-                logger.debug(f'No such proccess {pid_file} {pid}')
+                logger.debug(f'No such proccess {pid}')
                 proc.running = False
 
 
@@ -160,6 +162,17 @@ def git_pull(repo: Repo) -> str:
 
 def run(name: str, cwd: Path, cmd: List[str], env: dict):
     logger.debug(f'Running: {" ".join(cmd)}')
+
+    if cmd[0] == 'python':
+        if os.name == 'nt':
+            executable = 'venv/Scripts/python.exe'
+        elif os.name == 'posix':
+            executable = 'venv/bin/python'
+        else:
+            assert False, 'Unsupported os ' + os.name
+
+        cmd = [executable] + cmd[1:]
+
     my_env = os.environ
     my_env.update(env)
     kwargs = {}
@@ -186,17 +199,19 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     else:
         kwargs.update(start_new_session=True)
 
-    pid = subprocess.Popen(
+    popen = subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,
-        stdout=open((cwd / f'{name}.out').as_posix(), 'w').fileno(),
+        stdout=open((cwd / f'{name}.out').as_posix(), 'w'), #.fileno(),
         stderr=subprocess.STDOUT,
         cwd=cwd.as_posix(),
         env=my_env,
-        **kwargs).pid
+        **kwargs)
 
     pid_file = base_url / cwd / (name + '.pid')
-    pid_file.write_text(str(pid))
+    pid_file.write_text(str(popen.pid))
+
+    del popen
 
 
 def kill(repos: List[Repo], repo_id: str, process_id: str):

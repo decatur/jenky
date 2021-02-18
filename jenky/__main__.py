@@ -21,7 +21,8 @@ handler.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s %(
 logger.addHandler(handler)
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="jenky/html"), name="mymountname")
+html_root = Path(__file__).parent / 'html'
+app.mount("/static", StaticFiles(directory=html_root), name="mymountname")
 
 
 @app.get("/")
@@ -65,9 +66,11 @@ def post_process(repo_id: str, process_id: str, action: Action):
 def get_process_log(repo_id: str, process_id: str, std_x: str) -> Response:
     repo = util.repo_by_id(config.repos, repo_id)
     path = util.base_url / repo.directory / f'{process_id}.{std_x[3:]}'
-
-    lines = get_tail(path)
-    return Response(content=''.join(lines), media_type="text/plain")
+    if path.exists():
+        lines = get_tail(path)
+        return Response(content=''.join(lines), media_type="text/plain")
+    else:
+        return Response(content='Not Found', media_type="text/plain", status_code=404)
 
 
 class GitAction(BaseModel):
@@ -87,6 +90,7 @@ def post_repo(repo_id: str, action: GitAction):
 
 
 config_file = 'config.json'
+host = "127.0.0.1"
 port = 8000
 host = "127.0.0.1"
 

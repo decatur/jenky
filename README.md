@@ -52,3 +52,17 @@ venv/Scripts/python.exe foo.py & cat /proc/$!/winpid > run_test.pid
 * [spotify/dh-virtualenv: Python virtualenvs in Debian packages](https://github.com/spotify/dh-virtualenv)
 * [How We Deploy Python Code | Nylas](https://www.nylas.com/blog/packaging-deploying-python/)
 * [Deployment - Full Stack Python](https://www.fullstackpython.com/deployment.html)
+
+
+# Package and Publish
+
+````shell script
+vi setup.py
+git add -
+git commit -m'bumped version'
+git tag x.y.z
+git push --tags; git push
+
+python3 setup.py sdist
+python3 -m twine upload dist/*
+````
