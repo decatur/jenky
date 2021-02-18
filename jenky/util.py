@@ -99,6 +99,7 @@ git_format = "%(refname:short) %(authorname) %(authordate:raw)"
 
 def git_tags(git_dir: Path) -> List[List[str]]:
     logger.debug(git_dir)
+    # TODO: git fetch --all --tags
     proc = subprocess.run(
         [git_cmd, 'tag', '--sort', 'version:refname', f"--format={git_format}"],
         cwd=git_dir.as_posix(),
