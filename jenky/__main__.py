@@ -40,8 +40,11 @@ def get_repos() -> Config:
 def get_repo(repo_id: str) -> Repo:
     repo = util.repo_by_id(config.repos, repo_id)
     # util.fill_git_tag(config.repos)
-    util.fill_git_tags(repo)
-    util.fill_git_branches(repo)
+    if (util.base_url / repo.directory / '.git1').is_dir():
+        util.fill_git_tags(repo)
+        util.fill_git_branches(repo)
+    else:
+        repo.git_message = 'Not a git repository'
     return repo
 
 
