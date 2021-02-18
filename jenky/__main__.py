@@ -1,9 +1,9 @@
+import argparse
 import json
 import logging
 import sys
 import time
 from pathlib import Path
-from typing import List
 
 import uvicorn
 from fastapi import FastAPI
@@ -94,24 +94,16 @@ def post_repo(repo_id: str, action: GitAction):
     return dict(repo_id=repo_id, action=action.action, message=message)
 
 
-config_file = 'config.json'
-host = "127.0.0.1"
-port = 8000
-host = "127.0.0.1"
+parser = argparse.ArgumentParser()
+parser.add_argument('--host', type=str, help='host', default="127.0.0.1")
+parser.add_argument('--port', type=int, help='port', default=8000)
+parser.add_argument('--config_file', type=str, help='config_file', default="config.json")
+args = parser.parse_args()
 
-# TODO: Use argparse
-for arg in sys.argv:
-    if arg.startswith('--config='):
-        config_file = arg.split('=')[1]
-    elif arg.startswith('--port='):
-        port = int(arg.split('=')[1])
-    elif arg.startswith('--host='):
-        host = arg.split('=')[1]
-
-config_file = Path(config_file)
+config_file = Path(args.config_file)
 logger.info(f'Reading config from {config_file}')
 config = Config.parse_obj(json.loads(config_file.read_text(encoding='utf8')))
 util.git_cmd = config.git_cmd
 util.base_url = config_file.parent.absolute()
 
-uvicorn.run(app, host=host, port=port)
+uvicorn.run(app, host=args.host, port=args.port)

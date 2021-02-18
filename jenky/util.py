@@ -1,6 +1,8 @@
 # Note: FastApi does not support asyncio subprocesses, so do not use it!
 import logging
 import os
+import datetime
+import re
 from pathlib import Path
 from typing import List
 import subprocess
@@ -14,6 +16,10 @@ logger = logging.getLogger()
 # git_cmd = 'git'
 git_cmd: str
 base_url: Path
+
+# Match lines of the form "* 0.0.1 Wolfgang Kühn 1611961303 +0100"
+# -> ["*", "0.0.1", "Wolfgang Kühn", "1611961303"]
+TAG_PATTERN = r'(\*\s+)?([\S]+)\s+(.*?)\s+(\d+)'
 
 
 class Process(BaseModel):
@@ -91,7 +97,7 @@ def fill_git_tag(repos: List[Repo]):
 git_format = "%(refname:short) %(authorname) %(authordate:raw)"
 
 
-def git_tags(git_dir: Path) -> List[str]:
+def git_tags(git_dir: Path) -> List[List[str]]:
     logger.debug(git_dir)
     proc = subprocess.run(
         [git_cmd, 'tag', '--sort', 'version:refname', f"--format={git_format}"],
@@ -100,7 +106,12 @@ def git_tags(git_dir: Path) -> List[str]:
 
     if proc.stderr:
         raise OSError(str(proc.stderr, encoding='utf8'))
-    tags = [line.strip() for line in str(proc.stdout, encoding='utf8').splitlines()]
+
+    raw_tags = [line.strip() for line in str(proc.stdout, encoding='utf8').splitlines()]
+    tags = []
+    for tag in raw_tags:
+        m = re.match(TAG_PATTERN, tag)
+        tags.append([m[1], m[2], m[3], datetime.datetime.fromtimestamp(float(m[4])).isoformat()])
     return tags
 
 
@@ -113,7 +124,13 @@ def git_branches(git_dir: Path) -> List[str]:
 
     if proc.stderr:
         raise OSError(str(proc.stderr, encoding='utf8'))
-    branches = [line.strip() for line in str(proc.stdout, encoding='utf8').splitlines()]
+
+    raw_branches = [line.strip() for line in str(proc.stdout, encoding='utf8').splitlines()]
+    branches = []
+    for tag in raw_branches:
+        m = re.match(TAG_PATTERN, tag)
+        branches.append([m[1], m[2], m[3], datetime.datetime.fromtimestamp(float(m[4])).isoformat()])
+
     return branches
 
 
@@ -192,17 +209,20 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     # creationflags = subprocess.CREATE_BREAKAWAY_FROM_JOB
     #creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP #| subprocess.CREATE_NO_WINDOW
     kwargs['close_fds']: True
+    stdout = open((cwd / f'{name}.out').as_posix(), 'w')
+
     if os.name == 'nt':
         pass
         #kwargs.update(creationflags=creationflags)
         #kwargs['close_fds']: True
     else:
         kwargs.update(start_new_session=True)
+        stdout = stdout.fileno()
 
     popen = subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,
-        stdout=open((cwd / f'{name}.out').as_posix(), 'w'), #.fileno(),
+        stdout=stdout,
         stderr=subprocess.STDOUT,
         cwd=cwd.as_posix(),
         env=my_env,
