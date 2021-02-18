@@ -87,7 +87,7 @@ class GitAction(BaseModel):
 def post_repo(repo_id: str, action: GitAction):
     if action.action == 'pull':
         repo = util.repo_by_id(config.repos, repo_id)
-        message = util.git_pull(repo)  # , target_tag=action.gitTag)
+        message = util.git_pull(repo, target=action.gitTag)
     else:
         assert False, 'Invalid action ' + action.action
 

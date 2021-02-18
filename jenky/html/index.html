@@ -26,6 +26,13 @@
             margin-top: 1em;
         }
 
+        .grid-container {
+            margin-top: 1ex;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 0px 1em;
+        }
+
     </style>
 </head>
 <body>
@@ -68,17 +75,17 @@
         <div>
             <code id="repoName"></code> current tag is <code id="gitTag"></code>
         </div>
-        <div style="margin-top: 1ex;">
-            <label for="checkoutSrc"></label><select id="checkoutSrc" size=20>
-            <optgroup id="gitTags" label="Tags">
-            </optgroup>
-            <optgroup id="gitBranches" label="Branches">
-            </optgroup>
-        </select>
-
-            <button id="pull" type="button">Pull</button>
+        <div class="grid-container">
+            <div>
+                <label for="checkoutSrc"></label>
+                <select id="checkoutSrc" size=20>
+                    <optgroup id="gitTags" label="Tags"></optgroup>
+                    <optgroup id="gitBranches" label="Branches"></optgroup>
+                </select>
+                <button id="pull" type="button">Pull</button>
+            </div>
+            <div id="gitMessage" style="background-color: azure;"></div>
         </div>
-        <pre id="gitMessage"></pre>
     </form>
 </fieldset>
 
@@ -171,6 +178,7 @@
         for (const tag of repo.gitTags) {
             const option = document.createElement('option');
             option.textContent = tag.join(' ');
+            option.value = 'tags/' + tag[1];
             optGroup.appendChild(option);
         }
 
@@ -179,6 +187,7 @@
         for (const branch of repo.gitBranches) {
             const option = document.createElement('option');
             option.textContent = branch.join(' ');
+            option.value = branch[1];
             optGroup.appendChild(option);
         }
 
@@ -227,7 +236,7 @@
                     msgElem.textContent = (response.statusText + ' ' + response.url);
                 }
             })
-            .then(data => msgElem.textContent = JSON.stringify(data, null, 4))
+            .then(data => msgElem.textContent = data['message'])
     }
 
     function fetchRepo(repoName) {

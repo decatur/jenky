@@ -153,19 +153,35 @@ def fill_git_branches(repo: Repo):
         repo.git_message = str(e)
 
 
-def git_pull(repo: Repo) -> str:
+def git_pull(repo: Repo, target: str) -> str:
     """
     git pull
+    # TODO: git checkout tags/0.0.2
     """
     git_dir = base_url / repo.directory
+
+    if target.startswith('tags/'):
+        cmd = [git_cmd, 'checkout', target]
+        logger.debug(f'{git_dir} {cmd}')
+        proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+        message = str(proc.stderr, encoding='ascii').rstrip()
+        message += str(proc.stdout, encoding='ascii').rstrip()
+        if proc.returncode == 1:
+            return message
+    else:
+        cmd = [git_cmd, 'checkout', target]
+        logger.debug(f'{git_dir} {cmd}')
+        proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+        message = str(proc.stderr, encoding='ascii').rstrip()
+        message += str(proc.stdout, encoding='ascii').rstrip()
+        if proc.returncode == 1:
+            return message
+
     cmd = [git_cmd, 'pull']
     logger.debug(f'{git_dir} {cmd}')
-    proc = subprocess.run(
-        cmd,
-        cwd=git_dir.as_posix(),
-        capture_output=True)
+    proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
 
-    message = str(proc.stderr, encoding='ascii').rstrip()
+    message += str(proc.stderr, encoding='ascii').rstrip()
     message += str(proc.stdout, encoding='ascii').rstrip()
 
     # if repo.git_tag != target_tag:
