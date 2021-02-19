@@ -165,7 +165,12 @@ def git_fetch(repo: Repo) -> str:
     messages.append(str(proc.stderr, encoding='ascii').rstrip())
     messages.append(str(proc.stdout, encoding='ascii').rstrip())
 
-    # TODO: Merge if on branch
+    # TODO: This will fail if we are detached.
+    cmd = [git_cmd, 'merge']
+    logger.debug(f'{git_dir} {cmd}')
+    proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+    messages.append(str(proc.stderr, encoding='ascii').rstrip())
+    messages.append(str(proc.stdout, encoding='ascii').rstrip())
 
     return '\n'.join(messages)
 
