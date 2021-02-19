@@ -153,7 +153,24 @@ def fill_git_branches(repo: Repo):
         repo.git_message = str(e)
 
 
-def git_pull(repo: Repo, target: str) -> str:
+def git_fetch(repo: Repo) -> str:
+    """
+    git pull
+    """
+    git_dir = base_url / repo.directory
+    messages = []
+    cmd = [git_cmd, 'fetch', '--all', '--tags']
+    logger.debug(f'{git_dir} {cmd}')
+    proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+    messages.append(str(proc.stderr, encoding='ascii').rstrip())
+    messages.append(str(proc.stdout, encoding='ascii').rstrip())
+
+    # TODO: Merge if on branch
+
+    return '\n'.join(messages)
+
+
+def git_checkout(repo: Repo, target: str) -> str:
     """
     git pull
     # TODO: git checkout tags/0.0.2
@@ -171,6 +188,7 @@ def git_pull(repo: Repo, target: str) -> str:
             return '\n'.join(messages)
     else:
         # TODO: Yet this is the same as tag; Same command?
+        # git fetch --all --tags
         cmd = [git_cmd, 'checkout', target]
         logger.debug(f'{git_dir} {cmd}')
         proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
@@ -182,7 +200,6 @@ def git_pull(repo: Repo, target: str) -> str:
     cmd = [git_cmd, 'pull']
     logger.debug(f'{git_dir} {cmd}')
     proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
-
     messages.append(str(proc.stderr, encoding='ascii').rstrip())
     messages.append(str(proc.stdout, encoding='ascii').rstrip())
 

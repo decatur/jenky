@@ -4,6 +4,7 @@ import logging
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI
@@ -80,14 +81,20 @@ def get_process_log(repo_id: str, process_id: str, std_x: str) -> Response:
 
 class GitAction(BaseModel):
     action: str
-    gitTag: str
+    gitTag: Optional[str]
 
 
 @app.post("/repos/{repo_id}")
 def post_repo(repo_id: str, action: GitAction):
-    if action.action == 'pull':
-        repo = util.repo_by_id(config.repos, repo_id)
-        message = util.git_pull(repo, target=action.gitTag)
+    repo = util.repo_by_id(config.repos, repo_id)
+    if action.action == 'checkout':
+        message = util.git_checkout(repo, target=action.gitTag)
+    elif action.action == 'fetch':
+        message = util.git_fetch(repo)
+        # TODO: Not so nice to pass id here
+        get_repo(repo_id)
+        repo.git_message = message
+        return repo
     else:
         assert False, 'Invalid action ' + action.action
 
