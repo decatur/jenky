@@ -94,14 +94,14 @@ def fill_git_tag(repos: List[Repo]):
             repo.git_message = str(e)
 
 
-git_format = "%(refname:short) %(authorname) %(authordate:raw)"
+GIT_FORMAT = "%(refname:short) %(authorname) %(authordate:raw)"
 
 
 def git_tags(git_dir: Path) -> List[List[str]]:
     logger.debug(git_dir)
     # TODO: git fetch --all --tags
     proc = subprocess.run(
-        [git_cmd, 'tag', '--sort', 'version:refname', f"--format={git_format}"],
+        [git_cmd, 'tag', '--sort', 'version:refname', f"--format={GIT_FORMAT}"],
         cwd=git_dir.as_posix(),
         capture_output=True)
 
@@ -116,10 +116,10 @@ def git_tags(git_dir: Path) -> List[List[str]]:
     return tags
 
 
-def git_branches(git_dir: Path) -> List[str]:
+def git_branches(git_dir: Path) -> List[List[str]]:
     logger.debug(git_dir)
     proc = subprocess.run(
-        [git_cmd, 'branch', '--sort=-committerdate', f"--format=%(HEAD) {git_format}"],
+        [git_cmd, 'branch', '--sort=-committerdate', f"--format=%(HEAD) {GIT_FORMAT}"],
         cwd=git_dir.as_posix(),
         capture_output=True)
 
@@ -183,37 +183,21 @@ def git_checkout(repo: Repo, target: str) -> str:
     git_dir = base_url / repo.directory
     messages = []
 
-    if target.startswith('tags/'):
-        cmd = [git_cmd, 'checkout', target]
-        logger.debug(f'{git_dir} {cmd}')
-        proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
-        messages.append(str(proc.stderr, encoding='ascii').rstrip())
-        messages.append(str(proc.stdout, encoding='ascii').rstrip())
-        if proc.returncode == 1:
-            return '\n'.join(messages)
-    else:
-        # TODO: Yet this is the same as tag; Same command?
-        # git fetch --all --tags
-        cmd = [git_cmd, 'checkout', target]
-        logger.debug(f'{git_dir} {cmd}')
-        proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
-        messages.append(str(proc.stderr, encoding='ascii').rstrip())
-        messages.append(str(proc.stdout, encoding='ascii').rstrip())
-        if proc.returncode == 1:
-            return '\n'.join(messages)
+    # target is of the form tags/1.2.3 or branchname
+    cmd = [git_cmd, 'checkout', target]
+    logger.debug(f'{git_dir} {cmd}')
+    proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+    messages.append(str(proc.stderr, encoding='ascii').rstrip())
+    messages.append(str(proc.stdout, encoding='ascii').rstrip())
+    if proc.returncode == 1:
+        return '\n'.join(messages)
 
+    # TODO: Do not pull!
     cmd = [git_cmd, 'pull']
     logger.debug(f'{git_dir} {cmd}')
     proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
     messages.append(str(proc.stderr, encoding='ascii').rstrip())
     messages.append(str(proc.stdout, encoding='ascii').rstrip())
-
-    # if repo.git_tag != target_tag:
-    #     proc = subprocess.run(
-    #         [git_cmd, 'checkout', target_tag],
-    #         cwd=git_dir.as_posix(),
-    #         capture_output=True)
-    #     message += '\n' + str(proc.stdout, encoding='ascii').rstrip()
 
     return '\n'.join(messages)
 
@@ -248,14 +232,14 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     creationflags = subprocess.DETACHED_PROCESS  # Opens console window
     # creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW # Also opens console window
     # creationflags = subprocess.CREATE_BREAKAWAY_FROM_JOB
-    #creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP #| subprocess.CREATE_NO_WINDOW
+    # creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP #| subprocess.CREATE_NO_WINDOW
     kwargs['close_fds']: True
     stdout = open((cwd / f'{name}.out').as_posix(), 'w')
 
     if os.name == 'nt':
         pass
-        #kwargs.update(creationflags=creationflags)
-        #kwargs['close_fds']: True
+        # kwargs.update(creationflags=creationflags)
+        # kwargs['close_fds']: True
     else:
         kwargs.update(start_new_session=True)
         stdout = stdout.fileno()

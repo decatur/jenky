@@ -30,7 +30,7 @@
             margin-top: 1ex;
             display: grid;
             grid-template-columns: 300px 1fr;
-            gap: 0px 1em;
+            gap: 0 1em;
         }
 
     </style>
@@ -73,7 +73,9 @@
     <legend>Git Actions</legend>
     <form>
         <div>
-            <button id="fetch" type="button">Fetch ⭯</button><code id="repoName"></code> current tag is <code id="gitTag"></code>
+            <button id="fetch" type="button">Fetch ⭯</button>
+            <button id="checkout" type="button">checkout</button>
+            <code id="repoName"></code> current tag is <code id="gitTag"></code>
         </div>
         <div class="grid-container">
             <div>
@@ -82,7 +84,7 @@
                     <optgroup id="gitTags" label="Tags"></optgroup>
                     <optgroup id="gitBranches" label="Branches"></optgroup>
                 </select>
-                <button id="checkout" type="button">checkout</button>
+
             </div>
             <div id="gitMessage" style="background-color: azure;"></div>
         </div>
@@ -168,6 +170,7 @@
         /** @type{jenky.Repo} */
         const repo = reposByName[repoName];
         // document.getElementById('checkout').disabled = !repo.gitTag;
+        select.oninput = evt => console.log(evt);
         document.getElementById('fetch').onclick = () => gitFetch(repoName);
         document.getElementById('checkout').onclick = () => checkout(repoName, select.value);
         document.getElementById('repoName').textContent = repoName;
