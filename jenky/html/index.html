@@ -29,7 +29,7 @@
         .grid-container {
             margin-top: 1ex;
             display: grid;
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: 40ex 1fr;
             gap: 0 1em;
         }
 
@@ -75,16 +75,12 @@
         <div>
             <button id="fetch" type="button">Fetch ⭯</button>
             <button id="checkout" type="button">checkout</button>
-            <code id="repoName"></code> current tag is <code id="gitTag"></code>
+            <code id="repoName"></code> current tag is <code id="gitRef"></code>
         </div>
         <div class="grid-container">
             <div>
-                <label for="checkoutSrc"></label>
-                <select id="checkoutSrc" size=20>
-                    <optgroup id="gitTags" label="Tags"></optgroup>
-                    <optgroup id="gitBranches" label="Branches"></optgroup>
-                </select>
-
+                <label for="gitRefs"></label>
+                <select id="gitRefs" size=40></select>
             </div>
             <div id="gitMessage" style="background-color: azure;"></div>
         </div>
@@ -166,35 +162,24 @@
      */
     function renderRepo(repoName) {
         /** @type{HTMLSelectElement} */
-        const select = /** @type{HTMLSelectElement} */ document.getElementById('checkoutSrc');
+        const select = /** @type{HTMLSelectElement} */ document.getElementById('gitRefs');
         /** @type{jenky.Repo} */
         const repo = reposByName[repoName];
-        // document.getElementById('checkout').disabled = !repo.gitTag;
+        // document.getElementById('checkout').disabled = !repo.gitRef;
         select.oninput = evt => console.log(evt);
         document.getElementById('fetch').onclick = () => gitFetch(repoName);
-        document.getElementById('checkout').onclick = () => checkout(repoName, select.value);
+        document.getElementById('checkout').onclick = () => checkout(repo, select.value);
         document.getElementById('repoName').textContent = repoName;
-        document.getElementById('gitTag').textContent = (repo.gitTag ? repo.gitTag : repo.gitMessage);
-        document.getElementById('gitMessage').textContent = "";
+        document.getElementById('gitRef').textContent = repo.gitRef;
+        document.getElementById('gitMessage').textContent = repo.gitMessage;
 
-        let optGroup = document.getElementById('gitTags');
-        optGroup.textContent = '';
-        for (const tag of repo.gitTags) {
+        select.textContent = '';
+        for (const ref of repo.gitRefs) {
             const option = document.createElement('option');
-            option.textContent = tag.join(' ');
-            option.value = 'tags/' + tag[1];
-            optGroup.appendChild(option);
+            option.textContent = ref.creatorDate + ' ' + ref.refName;
+            option.value = ref.refName;
+            select.appendChild(option);
         }
-
-        optGroup = document.getElementById('gitBranches');
-        optGroup.textContent = '';
-        for (const branch of repo.gitBranches) {
-            const option = document.createElement('option');
-            option.textContent = branch.join(' ');
-            option.value = branch[1];
-            optGroup.appendChild(option);
-        }
-
     }
 
     /**
@@ -249,11 +234,22 @@
             })
     }
 
-    function checkout(repoName, gitTag) {
-        const payload = {action: 'checkout', gitTag: gitTag};
+    /**
+     * @param {jenky.Repo} repo
+     * @param {string} gitRef
+     */
+    function checkout(repo, gitRef) {
         const msgElem = document.getElementById('gitMessage');
+
+        if (repo.gitRef === gitRef) {
+            msgElem.textContent = `Reference ${gitRef} is already checked out`;
+            return
+        }
+
+        const payload = {action: 'checkout', gitRef: gitRef};
+
         msgElem.textContent = 'Loading...';
-        fetch(`/repos/${repoName}`, {method: 'post', body: JSON.stringify(payload)})
+        fetch(`/repos/${repo.repoName}`, {method: 'post', body: JSON.stringify(payload)})
             .then(response => {
                 if (response.status === 200) {
                     return response.json();

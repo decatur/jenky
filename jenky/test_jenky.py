@@ -7,8 +7,8 @@ config = [
     {
         "repoName": "jenky",
         "directory": "jenky",
-        "gitTag": "4711",
-        "gitTags": ["..."],
+        "gitRef": "4711",
+        "gitRefs": ["..."],
         "processes": [
             {
                 "name": "jenky",
@@ -69,7 +69,7 @@ def test_git_branches():
 
 
 def test_git_tags():
-    tags = util.git_tags(Path('c:/ws/projects/VirtualPowerStorage'))
+    tags = util.git_refs(Path('c:/ws/projects/VirtualPowerStorage'))
     pprint(tags)
 
 

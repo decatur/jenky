@@ -4,9 +4,8 @@
     {
       "repoName": "jenky",
       "directory": ".",
-      "gitTag": "",
-      "gitTags": [],
-      "gitBranches": [],
+      "gitRef": "",
+      "gitRefs": [],
       "gitMessage": "",
       "processes": [
         {

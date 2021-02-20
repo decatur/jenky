@@ -4,14 +4,20 @@ namespace jenky {
         running: boolean,
         createTime: number
     }
+
+    interface GitRef {
+        refName: string,
+        creatorDate: string
+    }
+
     interface Repo {
         repoName: string,
-        gitTag: string,
-        gitTags: string[],
-        gitBranches: string[],
+        gitRef: string,
+        gitRefs: GitRef[],
         gitMessage: string,
         processes: Process[]
     }
+
     interface RepoDict {
         [id: string] : Repo;
     }

@@ -1,10 +1,9 @@
 # Note: FastApi does not support asyncio subprocesses, so do not use it!
+import json
 import logging
 import os
-import datetime
-import re
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 import subprocess
 
 import psutil
@@ -16,10 +15,6 @@ logger = logging.getLogger()
 # git_cmd = 'git'
 git_cmd: str
 base_url: Path
-
-# Match lines of the form "* 0.0.1 Wolfgang Kühn 1611961303 +0100"
-# -> ["*", "0.0.1", "Wolfgang Kühn", "1611961303"]
-TAG_PATTERN = r'(\*\s+)?([\S]+)\s+(.*?)\s+(\d+)'
 
 
 class Process(BaseModel):
@@ -33,9 +28,8 @@ class Process(BaseModel):
 class Repo(BaseModel):
     repoName: str
     directory: str
-    git_tag: str = Field(..., alias='gitTag')
-    git_tags: List[str] = Field(..., alias='gitTags')
-    git_branches: List[str] = Field(..., alias='gitBranches')
+    git_tag: str = Field(..., alias='gitRef')
+    git_refs: List[dict] = Field(..., alias='gitRefs')
     git_message: str = Field(..., alias='gitMessage')
     processes: List[Process]
 
@@ -94,62 +88,72 @@ def fill_git_tag(repos: List[Repo]):
             repo.git_message = str(e)
 
 
-GIT_FORMAT = "%(refname:short) %(authorname) %(authordate:raw)"
+"""
+git tag --points-at HEAD
+git rev-parse --abbrev-ref HEAD
+"""
 
 
-def git_tags(git_dir: Path) -> List[List[str]]:
+def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
     logger.debug(git_dir)
-    # TODO: git fetch --all --tags
     proc = subprocess.run(
-        [git_cmd, 'tag', '--sort', 'version:refname', f"--format={GIT_FORMAT}"],
+        [git_cmd, 'for-each-ref', '--sort', '-creatordate', "--format",
+         """{
+          "refName": "%(refname)",
+          "creatorDate": "%(creatordate:iso-strict)",
+          "isHead": "%(HEAD)"
+        },"""],
         cwd=git_dir.as_posix(),
         capture_output=True)
 
     if proc.stderr:
         raise OSError(str(proc.stderr, encoding='utf8'))
 
-    raw_tags = [line.strip() for line in str(proc.stdout, encoding='utf8').splitlines()]
-    tags = []
-    for tag in raw_tags:
-        m = re.match(TAG_PATTERN, tag)
-        tags.append([m[1], m[2], m[3], datetime.datetime.fromtimestamp(float(m[4])).isoformat()])
-    return tags
+    output = str(proc.stdout, encoding='utf8')
+    refs = json.loads(f'[{output} null]')[:-1]
+    head_refs = [ref for ref in refs if ref['isHead'] == '*']
+    if not head_refs:
+        proc = subprocess.run(
+            [git_cmd, 'git tag', '--points-at', 'HEAD'],
+            cwd=git_dir.as_posix(),
+            capture_output=True)
+
+        if proc.stderr:
+            raise OSError(str(proc.stderr, encoding='utf8'))
+
+        head_ref = str(proc.stdout, encoding='utf8')
+    else:
+        # git rev-parse --abbrev-ref HEAD
+        head_ref = head_refs[0]['refName']
+
+    return head_ref, refs
 
 
-def git_branches(git_dir: Path) -> List[List[str]]:
-    logger.debug(git_dir)
-    proc = subprocess.run(
-        [git_cmd, 'branch', '--sort=-committerdate', f"--format=%(HEAD) {GIT_FORMAT}"],
-        cwd=git_dir.as_posix(),
-        capture_output=True)
+# def git_branches(git_dir: Path) -> List[List[str]]:
+#     logger.debug(git_dir)
+#     proc = subprocess.run(
+#         [git_cmd, 'branch', '--sort=-committerdate', f"--format=%(HEAD) {GIT_FORMAT}"],
+#         cwd=git_dir.as_posix(),
+#         capture_output=True)
+#
+#     if proc.stderr:
+#         raise OSError(str(proc.stderr, encoding='utf8'))
+#
+#     raw_branches = [line.strip() for line in str(proc.stdout, encoding='utf8').splitlines()]
+#     branches = []
+#     for tag in raw_branches:
+#         m = re.match(TAG_PATTERN, tag)
+#         branches.append([m[1], m[2], m[3], datetime.datetime.fromtimestamp(float(m[4])).isoformat()])
+#
+#     return branches
 
-    if proc.stderr:
-        raise OSError(str(proc.stderr, encoding='utf8'))
 
-    raw_branches = [line.strip() for line in str(proc.stdout, encoding='utf8').splitlines()]
-    branches = []
-    for tag in raw_branches:
-        m = re.match(TAG_PATTERN, tag)
-        branches.append([m[1], m[2], m[3], datetime.datetime.fromtimestamp(float(m[4])).isoformat()])
-
-    return branches
-
-
-def fill_git_tags(repo: Repo):
+def fill_git_refs(repo: Repo):
     try:
         git_dir = base_url / repo.directory
-        repo.git_tags = git_tags(git_dir)
+        repo.git_tag, repo.git_refs = git_refs(git_dir)
     except OSError as e:
-        repo.git_tags = []
-        repo.git_message = str(e)
-
-
-def fill_git_branches(repo: Repo):
-    try:
-        git_dir = base_url / repo.directory
-        repo.git_branches = git_branches(git_dir)
-    except OSError as e:
-        repo.git_branches = []
+        repo.git_refs = []
         repo.git_message = str(e)
 
 

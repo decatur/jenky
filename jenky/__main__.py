@@ -42,8 +42,7 @@ def get_repo(repo_id: str) -> Repo:
     repo = util.repo_by_id(config.repos, repo_id)
     # util.fill_git_tag(config.repos)
     if (util.base_url / repo.directory / '.git').is_dir():
-        util.fill_git_tags(repo)
-        util.fill_git_branches(repo)
+        util.fill_git_refs(repo)
     else:
         repo.git_message = 'Not a git repository'
     return repo
@@ -81,14 +80,14 @@ def get_process_log(repo_id: str, process_id: str, std_x: str) -> Response:
 
 class GitAction(BaseModel):
     action: str
-    gitTag: Optional[str]
+    gitRef: Optional[str]
 
 
 @app.post("/repos/{repo_id}")
 def post_repo(repo_id: str, action: GitAction):
     repo = util.repo_by_id(config.repos, repo_id)
     if action.action == 'checkout':
-        message = util.git_checkout(repo, target=action.gitTag)
+        message = util.git_checkout(repo, target=action.gitRef)
     elif action.action == 'fetch':
         message = util.git_fetch(repo)
         # TODO: Not so nice to pass id here
