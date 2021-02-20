@@ -1,4 +1,5 @@
 {
+  "appName": "Jenky 0.0.2, the gentle deploying app for Python",
   "git_cmd": "C:/ws/tools/PortableGit/bin/git.exe",
   "repos": [
     {

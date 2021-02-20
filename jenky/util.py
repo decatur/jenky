@@ -35,6 +35,7 @@ class Repo(BaseModel):
 
 
 class Config(BaseModel):
+    app_name: str = Field(..., alias='appName')
     repos: List[Repo]
     git_cmd: str
 
