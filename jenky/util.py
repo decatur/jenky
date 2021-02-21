@@ -207,11 +207,12 @@ def git_checkout(repo: Repo, target: str) -> str:
 
 
 def run(name: str, cwd: Path, cmd: List[str], env: dict):
-    logger.debug(f'Running: {" ".join(cmd)}')
+    my_env = os.environ
 
     if cmd[0] == 'python':
         if os.name == 'nt':
             executable = 'venv/Scripts/python.exe'
+            my_env['PYTHONPATH'] = 'venv/Lib/site-packages'
         elif os.name == 'posix':
             executable = 'venv/bin/python'
         else:
@@ -219,7 +220,10 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
 
         cmd = [executable] + cmd[1:]
 
-    my_env = os.environ
+    logger.debug(f'Running: {" ".join(cmd)}')
+
+
+    # my_env['PYTHONPATH'] += ';' + env['PYTHONPATH']
     my_env.update(env)
     kwargs = {}
 
@@ -238,6 +242,8 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     # creationflags = subprocess.CREATE_BREAKAWAY_FROM_JOB
     # creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP #| subprocess.CREATE_NO_WINDOW
     kwargs['close_fds']: True
+    stdout = open((cwd / f'{name}.out').as_posix(), 'w')
+    stdout.close()
     stdout = open((cwd / f'{name}.out').as_posix(), 'w')
 
     if os.name == 'nt':
@@ -340,6 +346,8 @@ def collect_repos(repos_base: Path) -> List[Repo]:
     for repo_dir in [f for f in repos_base.iterdir() if f.is_dir()]:
         config_file = repo_dir / 'jenky_config.json'
         if config_file.is_file():
+            logger.info(f'Collecting {repo_dir}')
+
             data = json.loads(config_file.read_text(encoding='utf8'))
             if 'directory' in data:
                 data['directory'] = (repo_dir / data['directory']).resolve()

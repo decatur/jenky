@@ -141,6 +141,7 @@
                 td = td.nextElementSibling;   // Status
                 let transition;
                 for (const input of td.querySelectorAll('input')) {
+                    input.name = proc.name + '_status';
                     if (input.value === 'start') input.checked = proc.running;
                     else if (input.value === 'stop') input.checked = !proc.running;
                     else transition = input;
