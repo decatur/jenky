@@ -246,11 +246,11 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     # creationflags = subprocess.DETACHED_PROCESS  # Opens console window
     # creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW # Also opens console window
     # creationflags = subprocess.CREATE_BREAKAWAY_FROM_JOB
-    # creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP #| subprocess.CREATE_NO_WINDOW
+    # creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP
     kwargs['close_fds']: True
-    stdout = open((cwd / f'{name}.out').as_posix(), 'w')
-    stdout.close()
-    stdout = open((cwd / f'{name}.out').as_posix(), 'w')
+    out_file = cwd / f'{name}.out'
+    out_file.unlink()
+    stdout = open(out_file.as_posix(), 'w')
 
     if os.name == 'nt':
         pass

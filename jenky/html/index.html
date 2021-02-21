@@ -91,8 +91,8 @@
 <script type="module">
     /** @type{jenky.Repo[]} */
     let repos;
-    /** @type{jenky.RepoDict } */
-    let reposByName;
+    /** @type{Object.<string, jenky.Repo>} */
+    let reposByName ={};
 
     class ConcernedFaceIterator {
         constructor() {
@@ -203,11 +203,11 @@
     }
 
     /**
-     * @param {jenky.Repo} data
+     * @param {jenky.Repo[]} data
      */
     function setRepos(data) {
-        repos = /** @type{jenky.Repo[]} */ data;
-        reposByName = /** @type{jenky.RepoDict } */ {};
+        repos = data;
+        reposByName = {};
         for (const repo of repos) {
             reposByName[repo.repoName] = repo;
         }

@@ -18,7 +18,4 @@ namespace jenky {
         processes: Process[]
     }
 
-    interface RepoDict {
-        [id: string] : Repo;
-    }
 }
