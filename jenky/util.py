@@ -215,13 +215,14 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
             my_env['PYTHONPATH'] = 'venv/Lib/site-packages'
         elif os.name == 'posix':
             executable = 'venv/bin/python'
+            my_env['PYTHONPATH'] = 'venv/lib/python3.8/site-packages'
         else:
             assert False, 'Unsupported os ' + os.name
 
         cmd = [executable] + cmd[1:]
 
     logger.debug(f'Running: {" ".join(cmd)}')
-
+    logger.info(f'PYTHONPATH: {my_env["PYTHONPATH"]}')
 
     # my_env['PYTHONPATH'] += ';' + env['PYTHONPATH']
     my_env.update(env)
@@ -237,7 +238,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     # Does not work
     # creationflags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW
     # creationflags = subprocess.CREATE_NEW_CONSOLE
-    creationflags = subprocess.DETACHED_PROCESS  # Opens console window
+    # creationflags = subprocess.DETACHED_PROCESS  # Opens console window
     # creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW # Also opens console window
     # creationflags = subprocess.CREATE_BREAKAWAY_FROM_JOB
     # creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP #| subprocess.CREATE_NO_WINDOW
@@ -252,7 +253,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
         # kwargs['close_fds']: True
     else:
         kwargs.update(start_new_session=True)
-        stdout = stdout.fileno()
+        #stdout = stdout.fileno()
 
     popen = subprocess.Popen(
         cmd,
