@@ -257,8 +257,8 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
         # kwargs.update(creationflags=creationflags)
         # kwargs['close_fds']: True
     else:
+        # This prevents that killing this process will kill the child process.
         kwargs.update(start_new_session=True)
-        #stdout = stdout.fileno()
 
     popen = subprocess.Popen(
         cmd,
@@ -290,6 +290,7 @@ def kill(repos: List[Repo], repo_id: str, process_id: str) -> bool:
         return False
 
     proc.terminate()
+    # We need to wait unless a zombie stays in process list!
     gone, alive = psutil.wait_procs([proc], timeout=3, callback=None)
     for p in alive:
         p.kill()
