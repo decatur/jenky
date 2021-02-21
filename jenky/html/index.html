@@ -117,20 +117,25 @@
         const template = document.getElementById('processRow');
         for (const repo of repos) {
             const name = repo.repoName;
-            for (const proc of repo.processes) {
+            for (const [index, proc] of repo.processes.entries()) {
                 let tr = template.content.firstElementChild.cloneNode(true);
                 let td = tr.firstElementChild;
                 td.textContent = repo.repoName;
 
                 td = td.nextElementSibling;
-                td.firstElementChild.value = repo.repoName;
-                td.firstElementChild.addEventListener('change', () => {
-                    fetchRepo(name)
-                        .then(repo => {
-                            reposByName[name] = repo;
-                            renderRepo(name);
-                        })
-                });
+                if ( index === 0) {
+                    td.firstElementChild.value = repo.repoName;
+                    td.firstElementChild.addEventListener('change', () => {
+                        fetchRepo(name)
+                            .then(repo => {
+                                reposByName[name] = repo;
+                                renderRepo(name);
+                            })
+                    });
+                } else {
+                    // Have only ONE radio button per repo!
+                    td.textContent = '';
+                }
 
                 td = td.nextElementSibling;
                 td.textContent = proc.name;
@@ -158,7 +163,6 @@
                     });
                 }
 
-                // /repos/{repo_id}/processes/{process_id}/{std}
                 td = td.nextElementSibling;
                 let a = td.firstElementChild;
                 while (a) {
