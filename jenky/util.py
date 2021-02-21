@@ -14,7 +14,6 @@ logger = logging.getLogger()
 # git_cmd = 'C:/ws/tools/PortableGit/bin/git.exe'
 # git_cmd = 'git'
 git_cmd: str
-base_url: Path
 
 
 class Process(BaseModel):
@@ -27,7 +26,7 @@ class Process(BaseModel):
 
 class Repo(BaseModel):
     repoName: str
-    directory: str
+    directory: Path
     git_tag: str = Field(..., alias='gitRef')
     git_refs: List[dict] = Field(..., alias='gitRefs')
     git_message: str = Field(..., alias='gitMessage')
@@ -37,7 +36,7 @@ class Repo(BaseModel):
 class Config(BaseModel):
     app_name: str = Field(..., alias='appName')
     repos: List[Repo]
-    git_cmd: str
+    git_cmd: str = Field(..., alias='gitCmd')
 
 
 def running_processes(repos: List[Repo]):
@@ -45,7 +44,7 @@ def running_processes(repos: List[Repo]):
         for proc in repo.processes:
             proc.running = False
             proc.create_time = None
-            pid_file = base_url / repo.directory / (proc.name + '.pid')
+            pid_file = repo.directory / (proc.name + '.pid')
             logger.debug(f'{pid_file}')
             if not pid_file.exists():
                 logger.debug(f'Skipping {pid_file}')
@@ -82,7 +81,7 @@ def git_tag(git_dir: Path) -> str:
 def fill_git_tag(repos: List[Repo]):
     for repo in repos:
         try:
-            git_dir = base_url / repo.directory
+            git_dir = repo.directory
             repo.git_tag = git_tag(git_dir)
         except OSError as e:
             repo.git_tag = None
@@ -151,7 +150,7 @@ def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
 
 def fill_git_refs(repo: Repo):
     try:
-        git_dir = base_url / repo.directory
+        git_dir = repo.directory
         repo.git_tag, repo.git_refs = git_refs(git_dir)
     except OSError as e:
         repo.git_refs = []
@@ -162,7 +161,7 @@ def git_fetch(repo: Repo) -> str:
     """
     git pull
     """
-    git_dir = base_url / repo.directory
+    git_dir = repo.directory
     messages = []
     cmd = [git_cmd, 'fetch', '--all', '--tags']
     logger.debug(f'{git_dir} {cmd}')
@@ -185,7 +184,7 @@ def git_checkout(repo: Repo, target: str) -> str:
     git pull
     # TODO: git checkout tags/0.0.2
     """
-    git_dir = base_url / repo.directory
+    git_dir = repo.directory
     messages = []
 
     # target is of the form tags/1.2.3 or branchname
@@ -258,7 +257,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
         env=my_env,
         **kwargs)
 
-    pid_file = base_url / cwd / (name + '.pid')
+    pid_file = cwd / (name + '.pid')
     pid_file.write_text(str(popen.pid))
 
     del popen
@@ -270,7 +269,7 @@ def kill(repos: List[Repo], repo_id: str, process_id: str) -> bool:
     if not procs:
         raise ValueError(repo_id)
     proc = procs[0]
-    pid_file = base_url / repo.directory / (proc.name + '.pid')
+    pid_file = repo.directory / (proc.name + '.pid')
     pid = int(pid_file.read_text())
     try:
         proc = psutil.Process(pid)
@@ -299,7 +298,7 @@ def restart(repos: List[Repo], repo_id: str, process_id: str):
     if not procs:
         raise ValueError(repo_id)
     proc = procs[0]
-    run(proc.name, base_url / repo.directory, proc.cmd, proc.env)
+    run(proc.name, repo.directory, proc.cmd, proc.env)
 
 
 # def find_root(procs: List[dict]):
@@ -333,3 +332,23 @@ def get_tail(path: Path) -> List[str]:
             byte_lines = f.readlines()
     lines = [str(byte_line, encoding='utf8') for byte_line in byte_lines]
     return lines
+
+
+def collect_repos(repos_base: Path) -> List[Repo]:
+    repos: List[Repo] = []
+    logger.info(f'Collect repos in {repos_base}')
+    for repo_dir in [f for f in repos_base.iterdir() if f.is_dir()]:
+        config_file = repo_dir / 'jenky_config.json'
+        if config_file.is_file():
+            data = json.loads(config_file.read_text(encoding='utf8'))
+            if 'directory' in data:
+                data['directory'] = (repo_dir / data['directory']).resolve()
+            else:
+                data['directory'] = repo_dir
+
+            data["gitRef"] = ""
+            data["gitRefs"] = []
+            data["gitMessage"] = ""
+
+            repos.append(Repo.parse_obj(data))
+    return repos

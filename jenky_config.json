@@ -1,0 +1,15 @@
+{
+  "repoName": "jenky",
+  "processes": [
+    {
+      "name": "run_test",
+      "cmd": [
+        "python",
+        "run_test.py"
+      ],
+      "env": {},
+      "running": false,
+      "createTime": 0
+    }
+  ]
+}

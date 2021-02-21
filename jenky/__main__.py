@@ -41,7 +41,7 @@ def get_repos() -> Config:
 def get_repo(repo_id: str) -> Repo:
     repo = util.repo_by_id(config.repos, repo_id)
     # util.fill_git_tag(config.repos)
-    if (util.base_url / repo.directory / '.git').is_dir():
+    if (repo.directory / '.git').is_dir():
         util.fill_git_refs(repo)
     else:
         repo.git_message = 'Not a git repository'
@@ -70,7 +70,7 @@ def post_process(repo_id: str, process_id: str, action: Action):
 @app.get("/repos/{repo_id}/processes/{process_id}/{std_x}")
 def get_process_log(repo_id: str, process_id: str, std_x: str) -> Response:
     repo = util.repo_by_id(config.repos, repo_id)
-    path = util.base_url / repo.directory / f'{process_id}.{std_x[3:]}'
+    path = repo.directory / f'{process_id}.{std_x[3:]}'
     if path.exists():
         lines = get_tail(path)
         return Response(content=''.join(lines), media_type="text/plain")
@@ -103,13 +103,14 @@ def post_repo(repo_id: str, action: GitAction):
 parser = argparse.ArgumentParser()
 parser.add_argument('--host', type=str, help='host', default="127.0.0.1")
 parser.add_argument('--port', type=int, help='port', default=8000)
-parser.add_argument('--config_file', type=str, help='config_file', default="config.json")
+parser.add_argument('--app_config', type=str, help='jenky_app_config', default="jenky_app_config.json")
 args = parser.parse_args()
 
-config_file = Path(args.config_file)
-logger.info(f'Reading config from {config_file}')
-config = Config.parse_obj(json.loads(config_file.read_text(encoding='utf8')))
+app_config = Path(args.app_config)
+logger.info(f'Reading config from {app_config}')
+data = json.loads(app_config.read_text(encoding='utf8'))
+repos_base = (Path(__file__).parent.parent / data['reposBase']).resolve()
+config = Config(appName=data['appName'], gitCmd=data['gitCmd'], repos=util.collect_repos(repos_base))
 util.git_cmd = config.git_cmd
-util.base_url = config_file.parent.absolute()
 
 uvicorn.run(app, host=args.host, port=args.port)
