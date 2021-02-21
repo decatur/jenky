@@ -59,6 +59,11 @@ def running_processes(repos: List[Repo]):
             try:
                 p = psutil.Process(pid)
                 proc.running = p.is_running()
+                if proc.running and p.status() == psutil.STATUS_ZOMBIE:
+                    # This happens whenever the process terminated but its creator did not because we do not wait.
+                    # p.terminate()
+                    p.wait()
+                    proc.running = False
                 proc.create_time = p.create_time()
             except psutil.NoSuchProcess:
                 logger.debug(f'No such proccess {pid}')
