@@ -141,7 +141,7 @@ def fill_git_refs(repo: Repo):
         repo.git_tag, repo.git_refs = git_refs(git_dir)
     except OSError as e:
         repo.git_refs = []
-        repo.git_message = str(e)
+        repo.git_message = str(e) + ' ' + git_cmd
 
 
 def git_fetch(repo: Repo) -> str:
