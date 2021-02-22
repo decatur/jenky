@@ -77,29 +77,6 @@ def running_processes(repos: List[Repo]):
                 proc.running = False
 
 
-def git_tag(git_dir: Path) -> str:
-    logger.debug(git_dir)
-    proc = subprocess.run(
-        [git_cmd, 'describe', '--tags'],
-        cwd=git_dir.as_posix(),
-        capture_output=True)
-
-    if proc.stderr:
-        raise OSError(str(proc.stderr, encoding='ascii'))
-    tag = str(proc.stdout, encoding='ascii')
-    return tag
-
-
-def fill_git_tag(repos: List[Repo]):
-    for repo in repos:
-        try:
-            git_dir = repo.directory
-            repo.git_tag = git_tag(git_dir)
-        except OSError as e:
-            repo.git_tag = None
-            repo.git_message = str(e)
-
-
 def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
     logger.debug(git_dir)
     proc = subprocess.run(
@@ -216,6 +193,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     logger.info(f'PYTHONPATH: {my_env["PYTHONPATH"]}')
 
     # my_env['PYTHONPATH'] += ';' + env['PYTHONPATH']
+    assert 'PYTHONPATH' not in env
     my_env.update(env)
     my_env['JENKY_NAME'] = name
     kwargs = {}
@@ -252,7 +230,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
         stdin=subprocess.DEVNULL,
         stdout=stdout,
         stderr=subprocess.STDOUT,
-        cwd=cwd.as_posix(),
+        cwd=cwd.absolute(),
         env=my_env,
         **kwargs)
 

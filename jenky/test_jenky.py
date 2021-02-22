@@ -28,9 +28,6 @@ def test_fill_process_running():
     pprint(config)
 
 
-async def test_fill_tag():
-    await util.fill_git_tag(config)
-    pprint(config)
 
 
 def test_fill_tags():
