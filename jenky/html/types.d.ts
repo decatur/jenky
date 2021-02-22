@@ -12,6 +12,7 @@ namespace jenky {
 
     interface Repo {
         repoName: string,
+        remoteUrl: string,
         gitRef: string,
         gitRefs: GitRef[],
         gitMessage: string,

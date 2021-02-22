@@ -1,5 +1,6 @@
 {
   "repoName": "jenky",
+  "remoteUrl": "https://github.com/decatur/jenky",
   "processes": [
     {
       "name": "jenky",

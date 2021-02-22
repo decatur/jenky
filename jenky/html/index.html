@@ -120,7 +120,15 @@
             for (const [index, proc] of repo.processes.entries()) {
                 let tr = template.content.firstElementChild.cloneNode(true);
                 let td = tr.firstElementChild;
-                td.textContent = repo.repoName;
+                if (repo.remoteUrl) {
+                    td.textContent = '';
+                    const a = document.createElement('a');
+                    a.href = repo.remoteUrl;
+                    a.textContent = repo.repoName;
+                    td.appendChild(a);
+                } else {
+                    td.textContent = repo.repoName;
+                }
 
                 td = td.nextElementSibling;
                 if ( index === 0) {

@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import subprocess
 
 import psutil
@@ -31,6 +31,7 @@ class Repo(BaseModel):
     git_refs: List[dict] = Field(..., alias='gitRefs')
     git_message: str = Field(..., alias='gitMessage')
     processes: List[Process]
+    remote_url: Optional[str] = Field(alias='remoteUrl')
 
 
 class Config(BaseModel):
@@ -65,6 +66,12 @@ def running_processes(repos: List[Repo]):
                     p.wait()
                     proc.running = False
                 proc.create_time = p.create_time()
+                if proc.running:
+                    try:
+                        # pprint(p.environ())
+                        proc.running = (p.environ().get('JENKY_NAME', '') == proc.name)
+                    except psutil.AccessDenied:
+                        proc.running = False
             except psutil.NoSuchProcess:
                 logger.debug(f'No such proccess {pid}')
                 proc.running = False
@@ -231,6 +238,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
 
     # my_env['PYTHONPATH'] += ';' + env['PYTHONPATH']
     my_env.update(env)
+    my_env['JENKY_NAME'] = name
     kwargs = {}
 
     # subprocess.DETACHED_PROCESS: Open console window
@@ -283,6 +291,8 @@ def kill(repos: List[Repo], repo_id: str, process_id: str) -> bool:
     proc = procs[0]
     pid_file = repo.directory / (proc.name + '.pid')
     pid = int(pid_file.read_text())
+    pid_file.unlink()
+
     try:
         proc = psutil.Process(pid)
     except psutil.NoSuchProcess:
