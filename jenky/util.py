@@ -173,7 +173,13 @@ def git_checkout(repo: Repo, git_ref: str) -> str:
     git_dir = repo.directory
     messages = []
 
-    cmd = [git_cmd, 'checkout', git_ref]
+    is_branch = git_ref.startswith('refs/heads/')
+    target = git_ref
+    if is_branch:
+        # We need the branch name
+        target = git_ref.split('/')[-1]
+
+    cmd = [git_cmd, 'checkout', target]
     logger.debug(f'{git_dir} {cmd}')
     proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
     messages.append(str(proc.stderr, encoding='ascii').rstrip())
@@ -181,7 +187,7 @@ def git_checkout(repo: Repo, git_ref: str) -> str:
     if proc.returncode == 1:
         return '\n'.join(messages)
 
-    if git_ref.startswith('refs/heads/'):
+    if is_branch:
         cmd = [git_cmd, 'pull']
         logger.debug(f'{git_dir} {cmd}')
         proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
