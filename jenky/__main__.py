@@ -108,7 +108,8 @@ args = parser.parse_args()
 app_config = Path(args.app_config)
 logger.info(f'Reading config from {app_config}')
 data = json.loads(app_config.read_text(encoding='utf8'))
-repos_base = (Path(__file__).parent.parent / data['reposBase']).resolve()
+repos_base = (app_config.parent / data['reposBase']).resolve()
+logger.info(f'repos_base is {repos_base}')
 config = Config(appName=data['appName'], gitCmd=data['gitCmd'], repos=util.collect_repos(repos_base))
 util.git_cmd = config.git_cmd
 
