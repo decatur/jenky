@@ -58,8 +58,7 @@ venv/Scripts/python.exe foo.py & cat /proc/$!/winpid > run_test.pid
 
 ````shell script
 vi setup.py
-git add -
-git commit -m'bumped version'
+git commit . -m'bumped version'
 git tag x.y.z
 git push --tags; git push
 
