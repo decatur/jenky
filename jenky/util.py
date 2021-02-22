@@ -191,16 +191,12 @@ def git_fetch(repo: Repo) -> str:
     return '\n'.join(messages)
 
 
-def git_checkout(repo: Repo, target: str) -> str:
-    """
-    git pull
-    # TODO: git checkout tags/0.0.2
-    """
+def git_checkout(repo: Repo, git_ref: str) -> str:
+    # git_ref is of the form refs/heads/main or refs/tags/0.0.2
     git_dir = repo.directory
     messages = []
 
-    # target is of the form tags/1.2.3 or branchname
-    cmd = [git_cmd, 'checkout', target]
+    cmd = [git_cmd, 'checkout', git_ref]
     logger.debug(f'{git_dir} {cmd}')
     proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
     messages.append(str(proc.stderr, encoding='ascii').rstrip())
@@ -208,12 +204,12 @@ def git_checkout(repo: Repo, target: str) -> str:
     if proc.returncode == 1:
         return '\n'.join(messages)
 
-    # TODO: Do not pull!
-    cmd = [git_cmd, 'pull']
-    logger.debug(f'{git_dir} {cmd}')
-    proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
-    messages.append(str(proc.stderr, encoding='ascii').rstrip())
-    messages.append(str(proc.stdout, encoding='ascii').rstrip())
+    if git_ref.startswith('refs/heads/'):
+        cmd = [git_cmd, 'pull']
+        logger.debug(f'{git_dir} {cmd}')
+        proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+        messages.append(str(proc.stderr, encoding='ascii').rstrip())
+        messages.append(str(proc.stdout, encoding='ascii').rstrip())
 
     return '\n'.join(messages)
 

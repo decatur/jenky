@@ -87,7 +87,7 @@ class GitAction(BaseModel):
 def post_repo(repo_id: str, action: GitAction):
     repo = util.repo_by_id(config.repos, repo_id)
     if action.action == 'checkout':
-        message = util.git_checkout(repo, target=action.gitRef)
+        message = util.git_checkout(repo, git_ref=action.gitRef)
     elif action.action == 'fetch':
         message = util.git_fetch(repo)
         # TODO: Not so nice to pass id here
