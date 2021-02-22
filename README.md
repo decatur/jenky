@@ -62,6 +62,6 @@ git commit . -m'bumped version'
 git tag x.y.z
 git push --tags; git push
 
-python3 setup.py sdist
-python3 -m twine upload dist/*
+python setup.py sdist
+python -m twine upload dist/*
 ````
