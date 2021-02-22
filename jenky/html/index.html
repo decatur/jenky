@@ -285,7 +285,10 @@
                     msgElem.textContent = concernedFaceIterator.next() + response.statusText + ' ' + response.url;
                 }
             })
-            .then(data => msgElem.textContent = data['message'])
+            .then(data => {
+                msgElem.textContent = data['message'];
+                repo.gitRef = gitRef;
+            })
     }
 
     function fetchRepo(repoName) {

@@ -100,12 +100,6 @@ def fill_git_tag(repos: List[Repo]):
             repo.git_message = str(e)
 
 
-"""
-git tag --points-at HEAD
-git rev-parse --abbrev-ref HEAD
-"""
-
-
 def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
     logger.debug(git_dir)
     proc = subprocess.run(
@@ -126,7 +120,7 @@ def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
     head_refs = [ref for ref in refs if ref['isHead'] == '*']
     if not head_refs:
         proc = subprocess.run(
-            [git_cmd, 'git tag', '--points-at', 'HEAD'],
+            [git_cmd, 'tag', '--points-at', 'HEAD'],
             cwd=git_dir.as_posix(),
             capture_output=True)
 
@@ -135,7 +129,7 @@ def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
 
         head_ref = str(proc.stdout, encoding='utf8')
     else:
-        # git rev-parse --abbrev-ref HEAD
+        # This would be a "git rev-parse --abbrev-ref HEAD"
         head_ref = head_refs[0]['refName']
 
     return head_ref, refs
@@ -191,12 +185,16 @@ def git_fetch(repo: Repo) -> str:
     return '\n'.join(messages)
 
 
-def git_checkout(repo: Repo, git_ref: str) -> str:
-    # git_ref is of the form refs/heads/main or refs/tags/0.0.2
+def git_checkout(repo: Repo, target: str) -> str:
+    """
+    git pull
+    # TODO: git checkout tags/0.0.2
+    """
     git_dir = repo.directory
     messages = []
 
-    cmd = [git_cmd, 'checkout', git_ref]
+    # target is of the form tags/1.2.3 or branchname
+    cmd = [git_cmd, 'checkout', target]
     logger.debug(f'{git_dir} {cmd}')
     proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
     messages.append(str(proc.stderr, encoding='ascii').rstrip())
@@ -204,12 +202,12 @@ def git_checkout(repo: Repo, git_ref: str) -> str:
     if proc.returncode == 1:
         return '\n'.join(messages)
 
-    if git_ref.startswith('refs/heads/'):
-        cmd = [git_cmd, 'pull']
-        logger.debug(f'{git_dir} {cmd}')
-        proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
-        messages.append(str(proc.stderr, encoding='ascii').rstrip())
-        messages.append(str(proc.stdout, encoding='ascii').rstrip())
+    # TODO: Do not pull!
+    cmd = [git_cmd, 'pull']
+    logger.debug(f'{git_dir} {cmd}')
+    proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+    messages.append(str(proc.stderr, encoding='ascii').rstrip())
+    messages.append(str(proc.stdout, encoding='ascii').rstrip())
 
     return '\n'.join(messages)
 
