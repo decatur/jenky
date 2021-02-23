@@ -150,7 +150,15 @@
                 }
 
                 td = td.nextElementSibling;
-                td.textContent = proc.name;
+                if (proc.serviceUrl) {
+                    td.textContent = '';
+                    const a = document.createElement('a');
+                    a.href = proc.serviceUrl;
+                    a.textContent = proc.name;
+                    td.appendChild(a);
+                } else {
+                    td.textContent = proc.name;
+                }
 
                 td = td.nextElementSibling;
                 td.textContent = proc.createTime ? new Date(proc.createTime * 1000).toISOString() : '';

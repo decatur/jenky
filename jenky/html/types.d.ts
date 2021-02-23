@@ -3,6 +3,7 @@ namespace jenky {
         name: string,
         running: boolean,
         createTime: number
+        serviceUrl: string
     }
 
     interface GitRef {
