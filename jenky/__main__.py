@@ -40,7 +40,7 @@ def get_repos() -> Config:
 @app.get("/repos/{repo_id}")
 def get_repo(repo_id: str) -> Repo:
     repo = util.repo_by_id(config.repos, repo_id)
-    if (repo.directory / '.git').is_dir():
+    if util.is_git_repo(repo):
         util.fill_git_refs(repo)
     else:
         repo.git_message = 'Not a git repository'

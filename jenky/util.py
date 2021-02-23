@@ -13,7 +13,8 @@ logger = logging.getLogger()
 
 # git_cmd = 'C:/ws/tools/PortableGit/bin/git.exe'
 # git_cmd = 'git'
-git_cmd: str
+git_cmd: str = ''
+git_version: str = ''
 
 
 class Process(BaseModel):
@@ -38,6 +39,20 @@ class Config(BaseModel):
     app_name: str = Field(..., alias='appName')
     repos: List[Repo]
     git_cmd: str = Field(..., alias='gitCmd')
+
+
+def git_support(_git_cmd: str):
+    global git_cmd, git_version
+    git_cmd = _git_cmd
+    try:
+        proc = subprocess.run([git_cmd, '--version'])
+        git_version = str(proc.stdout, encoding='utf8')
+    except OSError as e:
+        logger.warning(str(e))
+
+
+def is_git_repo(repo: Repo):
+    return git_version and (repo.directory / '.git').is_dir()
 
 
 def running_processes(repos: List[Repo]):
@@ -113,12 +128,8 @@ def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
 
 
 def fill_git_refs(repo: Repo):
-    try:
-        git_dir = repo.directory
-        repo.git_tag, repo.git_refs = git_refs(git_dir)
-    except OSError as e:
-        repo.git_refs = []
-        repo.git_message = str(e) + ' ' + git_cmd
+    git_dir = repo.directory
+    repo.git_tag, repo.git_refs = git_refs(git_dir)
 
 
 def git_fetch(repo: Repo) -> str:
@@ -178,11 +189,16 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     my_env = os.environ
 
     if cmd[0] == 'python':
+        executable = 'python'
         if os.name == 'nt':
-            executable = 'venv/Scripts/python.exe'
+            exe = 'venv/Scripts/python.exe'
+            if os.access(exe, os.X_OK):
+                executable = exe
             my_env['PYTHONPATH'] = 'venv/Lib/site-packages'
         elif os.name == 'posix':
-            executable = 'venv/bin/python'
+            exe = 'venv/bin/python'
+            if os.access(exe, os.X_OK):
+                executable = exe
             my_env['PYTHONPATH'] = 'venv/lib/python3.8/site-packages'
         else:
             assert False, 'Unsupported os ' + os.name
@@ -214,7 +230,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     # creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP
     kwargs['close_fds']: True
     out_file = cwd / f'{name}.out'
-    out_file.unlink()
+    out_file.unlink(missing_ok=True)
     stdout = open(out_file.as_posix(), 'w')
 
     if os.name == 'nt':
@@ -314,12 +330,19 @@ def get_tail(path: Path) -> List[str]:
     return lines
 
 
+def is_file(p: Path) -> bool:
+    try:
+        return p.is_file()
+    except PermissionError:
+        return False
+
+
 def collect_repos(repos_base: Path) -> List[Repo]:
     repos: List[Repo] = []
     logger.info(f'Collect repos in {repos_base}')
     for repo_dir in [f for f in repos_base.iterdir() if f.is_dir()]:
         config_file = repo_dir / 'jenky_config.json'
-        if config_file.is_file():
+        if is_file(config_file):
             logger.info(f'Collecting {repo_dir}')
 
             data = json.loads(config_file.read_text(encoding='utf8'))
