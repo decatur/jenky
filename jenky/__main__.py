@@ -110,7 +110,7 @@ logger.info(f'Reading config from {app_config}')
 data = json.loads(app_config.read_text(encoding='utf8'))
 repos_base = (app_config.parent / data['reposBase']).resolve()
 logger.info(f'repos_base is {repos_base}')
-config = Config(appName=data['appName'], gitCmd=data['gitCmd'], repos=util.collect_repos(repos_base))
-util.git_cmd = config.git_cmd
+config = Config(appName=data['appName'], repos=util.collect_repos(repos_base))
+util.git_support(data['gitCmd'])
 
 uvicorn.run(app, host=args.host, port=args.port)

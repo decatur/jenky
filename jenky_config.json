@@ -10,10 +10,10 @@
       "createTime": 0
     },
     {
-      "name": "run_test",
+      "name": "sample",
       "cmd": [
         "python",
-        "run_test.py"
+        "scripts/sample.py"
       ],
       "env": {},
       "running": false,

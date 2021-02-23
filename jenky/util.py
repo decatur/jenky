@@ -39,14 +39,13 @@ class Repo(BaseModel):
 class Config(BaseModel):
     app_name: str = Field(..., alias='appName')
     repos: List[Repo]
-    git_cmd: str = Field(..., alias='gitCmd')
 
 
 def git_support(_git_cmd: str):
     global git_cmd, git_version
     git_cmd = _git_cmd
     try:
-        proc = subprocess.run([git_cmd, '--version'])
+        proc = subprocess.run([git_cmd, '--version'], capture_output=True)
         git_version = str(proc.stdout, encoding='utf8')
     except OSError as e:
         logger.warning(str(e))
