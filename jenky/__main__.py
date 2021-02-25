@@ -112,5 +112,6 @@ repos_base = (app_config.parent / data['reposBase']).resolve()
 logger.info(f'repos_base is {repos_base}')
 config = Config(appName=data['appName'], repos=util.collect_repos(repos_base))
 util.git_support(data['gitCmd'])
+util.auto_run_processes(config.repos)
 
 uvicorn.run(app, host=args.host, port=args.port)

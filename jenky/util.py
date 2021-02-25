@@ -55,41 +55,55 @@ def is_git_repo(repo: Repo):
     return git_version and (repo.directory / '.git').is_dir()
 
 
+def running_process(proc: Process, directory: Path) -> Optional[psutil.Process]:
+    pid_file = directory / (proc.name + '.pid')
+    logger.debug(f'Reading {pid_file}')
+
+    if not pid_file.exists():
+        logger.debug(f'Skipping {pid_file}')
+        return None
+
+    try:
+        pid = int(pid_file.read_text())
+    except Exception as e:
+        logger.exception(f'Reading pid file {pid_file}')
+        raise e
+
+    try:
+        p = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        logger.debug(f'No such proccess {pid}')
+        return None
+
+    is_running = p.is_running()
+    if not is_running:
+        return None
+    elif is_running and p.status() == psutil.STATUS_ZOMBIE:
+        # This happens whenever the process terminated but its creator did not because we do not wait.
+        # p.terminate()
+        p.wait()
+        return None
+
+    try:
+        # pprint(p.environ())
+        if (p.environ().get('JENKY_NAME', '') == proc.name):
+            return p
+    except psutil.AccessDenied:
+        pass
+
+    return None
+
+
 def running_processes(repos: List[Repo]):
     for repo in repos:
         for proc in repo.processes:
-            proc.running = False
-            proc.create_time = None
-            pid_file = repo.directory / (proc.name + '.pid')
-            logger.debug(f'{pid_file}')
-            if not pid_file.exists():
-                logger.debug(f'Skipping {pid_file}')
-                continue
-
-            try:
-                pid = int(pid_file.read_text())
-            except Exception as e:
-                logger.exception(f'Reading pid file {pid_file}')
-                raise e
-
-            try:
-                p = psutil.Process(pid)
-                proc.running = p.is_running()
-                if proc.running and p.status() == psutil.STATUS_ZOMBIE:
-                    # This happens whenever the process terminated but its creator did not because we do not wait.
-                    # p.terminate()
-                    p.wait()
-                    proc.running = False
+            p = running_process(proc, repo.directory)
+            if p:
+                proc.running = True
                 proc.create_time = p.create_time()
-                if proc.running:
-                    try:
-                        # pprint(p.environ())
-                        proc.running = (p.environ().get('JENKY_NAME', '') == proc.name)
-                    except psutil.AccessDenied:
-                        proc.running = False
-            except psutil.NoSuchProcess:
-                logger.debug(f'No such proccess {pid}')
+            else:
                 proc.running = False
+                proc.create_time = None
 
 
 def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
@@ -266,19 +280,16 @@ def kill(repos: List[Repo], repo_id: str, process_id: str) -> bool:
     pid = int(pid_file.read_text())
     pid_file.unlink()
 
-    try:
-        proc = psutil.Process(pid)
-    except psutil.NoSuchProcess:
-        logger.warning(f'No such process with pid {pid}')
-        return False
+    p = running_process(proc, repo.directory)
+    if p:
+        p.terminate()
+        # We need to wait unless a zombie stays in process list!
+        gone, alive = psutil.wait_procs([p], timeout=3, callback=None)
+        for process in alive:
+            process.kill()
 
-    proc.terminate()
-    # We need to wait unless a zombie stays in process list!
-    gone, alive = psutil.wait_procs([proc], timeout=3, callback=None)
-    for p in alive:
-        p.kill()
-
-    return True
+        return True
+    return False
 
 
 def repo_by_id(repos: List[Repo], repo_id: str) -> Repo:
@@ -294,6 +305,8 @@ def restart(repos: List[Repo], repo_id: str, process_id: str):
     if not procs:
         raise ValueError(repo_id)
     proc = procs[0]
+    p = running_process(proc, repo.directory)
+    assert p is None
     run(proc.name, repo.directory, proc.cmd, proc.env)
 
 
@@ -357,3 +370,15 @@ def collect_repos(repos_base: Path) -> List[Repo]:
 
             repos.append(Repo.parse_obj(data))
     return repos
+
+
+def auto_run_processes(repos: List[Repo]):
+    for repo in repos:
+        for proc in repo.processes:
+            if proc.running:
+                p = running_process(proc, repo.directory)
+                if not p:
+                    logger.info(f'Auto-running {repo.repoName}.{proc.name}')
+                    run(proc.name, repo.directory, proc.cmd, proc.env)
+                    continue
+            logger.info(f'Not Auto-running {repo.repoName}.{proc.name}')

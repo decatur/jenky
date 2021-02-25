@@ -16,7 +16,7 @@
         "scripts/sample.py"
       ],
       "env": {},
-      "running": false,
+      "running": true,
       "createTime": 0
     }
   ]
