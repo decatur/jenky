@@ -204,12 +204,16 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
 
     if cmd[0] == 'python':
         executable = 'python'
+        # See https://docs.python.org/3/library/venv.html for the different location MS-Windows vs Linux.
         if os.name == 'nt':
-            exe = 'venv/Scripts/python.exe'
+            # Do not use the exe from the env because this is not a symbolic link and will generate 2 processes.
+            pyvenv = {k.strip(): v.strip() for k, v in (line.split('=') for line in open('venv/pyvenv.cfg', 'r'))}
+            exe = pyvenv['home'] + '/python.exe'
             if os.access(exe, os.X_OK):
                 executable = exe
             my_env['PYTHONPATH'] = 'venv/Lib/site-packages'
         elif os.name == 'posix':
+            # This is a symlink, which is ok.
             exe = 'venv/bin/python'
             if os.access(exe, os.X_OK):
                 executable = exe
@@ -222,52 +226,33 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     logger.debug(f'Running: {" ".join(cmd)}')
     logger.info(f'PYTHONPATH: {my_env["PYTHONPATH"]}')
 
-    # my_env['PYTHONPATH'] += ';' + env['PYTHONPATH']
     assert 'PYTHONPATH' not in env
     my_env.update(env)
     my_env['JENKY_NAME'] = name
-    kwargs = {}
 
-    # subprocess.DETACHED_PROCESS: Open console window
-    # subprocess.CREATE_NEW_PROCESS_GROUP  Only this will not detach
-    # subprocess.CREATE_BREAKAWAY_FROM_JOB Only this will not detach
-    # Both CREATE_NEW_PROCESS_GROUP and CREATE_BREAKAWAY_FROM_JOB will not detach
-    # CREATE_NEW_CONSOLE
-    # CREATE_NO_WINDOW(i.e.new
-
-    # Does not work
-    # creationflags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW
-    # creationflags = subprocess.CREATE_NEW_CONSOLE
-    # creationflags = subprocess.DETACHED_PROCESS  # Opens console window
-    # creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW # Also opens console window
-    # creationflags = subprocess.CREATE_BREAKAWAY_FROM_JOB
-    # creationflags = subprocess.CREATE_NEW_CONSOLE #| subprocess.CREATE_NEW_PROCESS_GROUP
-    kwargs['close_fds']: True
     out_file = cwd / f'{name}.out'
     out_file.unlink(missing_ok=True)
     stdout = open(out_file.as_posix(), 'w')
 
     if os.name == 'nt':
-        pass
-        # kwargs.update(creationflags=creationflags)
-        # kwargs['close_fds']: True
+        kwargs = {}
     else:
         # This prevents that killing this process will kill the child process.
-        kwargs.update(start_new_session=True)
+        kwargs = dict(start_new_session=True)
 
     popen = subprocess.Popen(
         cmd,
-        stdin=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,  # TODO: We do not actually need this, even if subprocess reads from stdin.
         stdout=stdout,
         stderr=subprocess.STDOUT,
-        cwd=cwd.absolute(),
+        cwd=cwd.absolute().as_posix(),
         env=my_env,
         **kwargs)
 
     pid_file = cwd / (name + '.pid')
     pid_file.write_text(str(popen.pid))
 
-    del popen
+    del popen  # Voodoo
 
 
 def kill(repos: List[Repo], repo_id: str, process_id: str) -> bool:
