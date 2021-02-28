@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # Runs jenky server in background.
 # This is a template for the contract jenky needs for running processes:
 # 1) A process is identified by both
@@ -7,13 +9,18 @@
 #
 # 1.1 is for performance reasons but cannot be used to identify the process as PIDs are reused.
 # 1.2 is used to verify that the process to which the pid-file points to is genuine.
+#
+# Usage: run_jenky my_jenky_app_config
 
-if strings /proc/$(cat jenky.pid)/environ | egrep JENKY_NAME=jenky
+if [[ -f jenky.pid && -d /proc/$(cat jenky.pid) ]]
 then
-  kill $(cat jenky.pid)
+  if strings /proc/$(cat jenky.pid)/environ | egrep JENKY_NAME=jenky
+  then
+    kill $(cat jenky.pid)
+  fi
 fi
 
 cd jenky_dir
 export JENKY_NAME=jenky
-nohup venv/bin/python -m jenky --app_config=jenky_app_config.json --port=8094 >$JENKY_NAME.out 2>&1 &
+nohup venv/bin/python -m jenky --app_config=$1 --port=8094 >$JENKY_NAME.out 2>&1 &
 echo $! > $JENKY_NAME.pid
