@@ -20,7 +20,6 @@ then
   fi
 fi
 
-cd jenky_dir
 export JENKY_NAME=jenky
 nohup venv/bin/python -m jenky --app_config=$1 --port=8094 >$JENKY_NAME.out 2>&1 &
 echo $! > $JENKY_NAME.pid
