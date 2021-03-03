@@ -10,7 +10,7 @@
 # 1.1 is for performance reasons but cannot be used to identify the process as PIDs are reused.
 # 1.2 is used to verify that the process to which the pid-file points to is genuine.
 #
-# Usage: run_jenky my_jenky_app_config
+# Usage: run_jenky my_jenky_app_config.json
 
 if [[ -f jenky.pid && -d /proc/$(cat jenky.pid) ]]
 then

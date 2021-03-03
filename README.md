@@ -1,7 +1,14 @@
 # jenky
-A build and deploy server for Python developers
+A deploy server for Python developers. 
 
-# 🚧 This is an alpha release!
+When installed on a target server or Docker container, you can manage (checkout) repositories and monitor and restart 
+processes using the Jenky UI.
+
+## UI Example
+![UI](jenky/html/ui.png)
+
+## Jenky Object Model
+![Jenky Object Model](jenky/html/jenky_object_model.png)
 
 # Setup
 
@@ -9,44 +16,75 @@ A build and deploy server for Python developers
 git clone https://github.com/decatur/jenky.git
 cd jenky
 python3.8 -m venv venv
-. venv/Scripts/activate
+. venv/Scripts/activate  # for MS Windows
 pip install -r requirements.txt
 ````
 
 # Start jenky server
 
-Shown in example are default config file and default port.
+Run Jenky from package.
 
 ````shell script
-python -m jenky --config=config.json --port=8000
+python -m jenky
+# or with explicit default values
+python -m jenky --app_config=jenky_app_config.json --host=127.0.0.1 --port=8000
 ````
 
+If you plan to monitor and restart Jenky with Jenky (eat you own food), please use the `restart_jenky.sh` script.
+
+# Configure Jenky
+
+A Jenky instance is customized via the `--app_config` command line option. You specify a JSON document with the fiels
+* appName: The branding of the Jenky instance, as shown in the title of the UI.
+* reposBase: Path to a folder. All subfolders containing a `jenky_config.json` are considered repositories.
+* gitCmd: The command to execute git on the target server.
+
+Example `jenky_app_config.json` document:
 ````
-. venv/bin/activate
-python -m jenky --config=../jenky_config.json --port=8094
+{
+  "appName": "Jenky 0.0.2, the gentle deploying app for Python",
+  "reposBase": "../",
+  "gitCmd": "C:/ws/tools/PortableGit/bin/git.exe"
+}
 ````
 
-# Usage
+# Configure Repository
 
-* Start the ...
-* Kill ...
-* Checkout ...
+Each repository and its list of processes needs to be configured with a `jenky_config.json` file in the root of
+the repository:
+* repoName: The unique name of the repository
+* remoteUrl [optional]: A link to a representation of the repository
+* processes: A list of processes
+  * name: The unique (within this repo) name of the process
+  * cmd: The command to run the process
+  * env: Additional environment
+  * running: Shall the process be auto-restarted when starting Jenky
+  * createTime: Set this to 0
+
+Example `jenky_config.json` file:
+````
+{
+  "repoName": "jenky",
+  "remoteUrl": "https://github.com/decatur/jenky",
+  "processes": [
+    {
+      "name": "sample",
+      "cmd": [
+        "python",
+        "scripts/sample.py"
+      ],
+      "env": {},
+      "running": true,
+      "createTime": 0
+    }
+  ]
+}
+````
 
 # Start Processes from Shell
 
-## Unix
-
-From bash
-````shell script
-venv/Scripts/python.exe foo.py & cat $! > run_test.pid
-````
-
-## MS Windows
-
-From git bash
-````shell script
-venv/Scripts/python.exe foo.py & cat /proc/$!/winpid > run_test.pid
-````
+You can optionally/manually start processes which are managed by Jenky from shell. Jenky has a contract with processes
+you have to respect. This contract is documented in `restart_jenky.sh`. Please adapt this script to your needs (Unix only).
 
 # References
 * [spotify/dh-virtualenv: Python virtualenvs in Debian packages](https://github.com/spotify/dh-virtualenv)
