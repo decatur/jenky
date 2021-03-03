@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({startOnLoad:true});</script>
+
+    Here is one mermaid diagram:
+    <pre class="mermaid">
+graph LR
+    Jenky --> |manages<br/>many| Repository
+    Repository --> |contains<br/>many| Process
+    Process--> |writes| pidfile
+    Process--> |writes| stdout
+    </pre>
+
+  </body>
+</html>
