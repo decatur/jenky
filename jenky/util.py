@@ -155,14 +155,20 @@ def git_fetch(repo: Repo) -> List[str]:
     return messages
 
 
+def get_sha(git_dir: Path, file: Path) -> str:
+    cmd = [git_cmd, "ls-files", "-s", file.as_posix()]
+    proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+    line = str(proc.stdout, encoding='ascii').rstrip()
+    # Output format is
+    #    '100644 3fff12262ed377d9023c70f13f93ebd6b0f9dc46 0	filename'
+    return line.split()[1]
+
+
 def git_checkout(repo: Repo, git_ref: str) -> str:
     """
     git_ref is of the form refs/heads/main or refs/tags/0.0.3
-    TODO: Compare sha before and after an issue warning if changed:
-        git ls-files -s requirements.txt | awk '{print $2}'
     """
     git_dir = repo.directory
-    messages = []
 
     is_branch = git_ref.startswith('refs/heads/')
     target = git_ref
@@ -170,26 +176,26 @@ def git_checkout(repo: Repo, git_ref: str) -> str:
         # We need the branch name
         target = git_ref.split('/')[-1]
 
+    sha_before = get_sha(git_dir, Path('requirements.txt'))
+
     cmd = [git_cmd, 'checkout', target]
     logger.debug(f'{git_dir} {cmd}')
     proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+    messages = []
     messages.append(str(proc.stderr, encoding='ascii').rstrip())
     messages.append(str(proc.stdout, encoding='ascii').rstrip())
     if proc.returncode == 1:
-        return '\n'.join(messages)
-
-    if is_branch:
+        pass
+    elif is_branch:
         cmd = [git_cmd, 'merge']
         logger.debug(f'{git_dir} {cmd}')
         proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
         messages.append(str(proc.stderr, encoding='ascii').rstrip())
         messages.append(str(proc.stdout, encoding='ascii').rstrip())
 
-        # cmd = [git_cmd, 'pull']
-        # logger.debug(f'{git_dir} {cmd}')
-        # proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
-        # messages.append(str(proc.stderr, encoding='ascii').rstrip())
-        # messages.append(str(proc.stdout, encoding='ascii').rstrip())
+    sha_after = get_sha(git_dir, Path('requirements.txt'))
+    if sha_after != sha_before:
+        messages.append('Warning: requirements.txt did change!')
 
     return '\n'.join(messages)
 
@@ -289,19 +295,6 @@ def restart(repos: List[Repo], repo_id: str, process_id: str):
     assert p is None
     run(proc.name, repo.directory, proc.cmd, proc.env)
 
-
-# def find_root(procs: List[dict]):
-#     parent = None
-#     for proc in procs:
-#         parents = [p for p in procs if p['pid'] == proc['ppid']]
-#
-#         if not parents:
-#             assert parent is None
-#             parent = proc
-#         else:
-#             assert len(parents) == 1
-#
-#     return parent
 
 def get_tail(path: Path) -> List[str]:
     logger.debug(path)

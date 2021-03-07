@@ -53,7 +53,7 @@ class Action(BaseModel):
 
 
 @app.post("/repos/{repo_id}/processes/{process_id}")
-def post_process(repo_id: str, process_id: str, action: Action):
+def change_process_state(repo_id: str, process_id: str, action: Action):
     if action.action == 'kill':
         killed = util.kill(config.repos, repo_id, process_id)
         if not killed:
@@ -88,11 +88,6 @@ def post_repo(repo_id: str, action: GitAction) -> dict:
     repo = util.repo_by_id(config.repos, repo_id)
     if action.action == 'checkout':
         message = util.git_checkout(repo, git_ref=action.gitRef)
-    # elif action.action == 'fetch':
-    #     message = util.git_fetch(repo)
-    #     repo.git_tag, repo.git_refs = git_refs(repo.directory)
-    #     #repo.git_message = message
-    #     #return repo
     else:
         assert False, 'Invalid action ' + action.action
 
