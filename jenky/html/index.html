@@ -209,7 +209,13 @@
         const repo = reposByName[repoName];
         select.oninput = evt => console.log(evt);
         //document.getElementById('fetch').onclick = () => fetchRepo(repoName);
-        document.getElementById('checkout').onclick = () => gitCheckout(repo, select.value);
+        document.getElementById('checkout').onclick = () => {
+            if (!select.value) {
+                document.getElementById('gitMessage').textContent = 'Please select tag or branch';
+            } else {
+                gitCheckout(repo, select.value);
+            }
+        };
 
         document.getElementById('repoName').textContent = repoName;
         document.getElementById('gitRef').textContent = repo.gitRef;
