@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from starlette.responses import RedirectResponse, Response
 
 from jenky import util
-from jenky.util import Config, Repo, get_tail
+from jenky.util import Config, Repo, get_tail, git_refs, git_fetch
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -41,7 +41,8 @@ def get_repos() -> Config:
 def get_repo(repo_id: str) -> Repo:
     repo = util.repo_by_id(config.repos, repo_id)
     if util.is_git_repo(repo):
-        util.fill_git_refs(repo)
+        git_fetch(repo)
+        repo.git_tag, repo.git_refs = git_refs(repo.directory)
     else:
         repo.git_message = 'Not a git repository'
     return repo
@@ -83,16 +84,15 @@ class GitAction(BaseModel):
 
 
 @app.post("/repos/{repo_id}")
-def post_repo(repo_id: str, action: GitAction):
+def post_repo(repo_id: str, action: GitAction) -> dict:
     repo = util.repo_by_id(config.repos, repo_id)
     if action.action == 'checkout':
         message = util.git_checkout(repo, git_ref=action.gitRef)
-    elif action.action == 'fetch':
-        message = util.git_fetch(repo)
-        # TODO: Not so nice to pass id here
-        get_repo(repo_id)
-        repo.git_message = message
-        return repo
+    # elif action.action == 'fetch':
+    #     message = util.git_fetch(repo)
+    #     repo.git_tag, repo.git_refs = git_refs(repo.directory)
+    #     #repo.git_message = message
+    #     #return repo
     else:
         assert False, 'Invalid action ' + action.action
 

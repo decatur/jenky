@@ -30,6 +30,12 @@ python -m jenky
 python -m jenky --app_config=jenky_app_config.json --host=127.0.0.1 --port=8000
 ````
 
+or in a Dockerfile
+````shell script
+EXPOSE 5000
+ENTRYPOINT ["tini", "-g", "--", "python", "-m jenky",  "--app_config=jenky_app_config.json", "--port=5000", "--host=0.0.0.0"]
+````
+
 If you plan to monitor and restart Jenky with Jenky (eat you own food), please use the `restart_jenky.sh` script.
 
 # Configure Jenky

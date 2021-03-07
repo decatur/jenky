@@ -108,6 +108,8 @@ def running_processes(repos: List[Repo]):
 
 def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
     logger.debug(git_dir)
+    # TODO: git ls-remote --refs --quiet --symref
+    # But note that we cannot get creatorDate, nor sort by it!
     proc = subprocess.run(
         [git_cmd, 'for-each-ref', '--sort', '-creatordate', "--format",
          """{
@@ -141,36 +143,23 @@ def git_refs(git_dir: Path) -> Tuple[str, List[dict]]:
     return head_ref, refs
 
 
-def fill_git_refs(repo: Repo):
-    git_dir = repo.directory
-    repo.git_tag, repo.git_refs = git_refs(git_dir)
-
-
-def git_fetch(repo: Repo) -> str:
-    """
-    git pull
-    """
+def git_fetch(repo: Repo) -> List[str]:
     git_dir = repo.directory
     messages = []
-    cmd = [git_cmd, 'fetch', '--all', '--tags']
+    cmd = [git_cmd, 'fetch', '--tags']
     logger.debug(f'{git_dir} {cmd}')
     proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
     messages.append(str(proc.stderr, encoding='ascii').rstrip())
     messages.append(str(proc.stdout, encoding='ascii').rstrip())
 
-    # TODO: This will fail if we are detached.
-    cmd = [git_cmd, 'merge']
-    logger.debug(f'{git_dir} {cmd}')
-    proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
-    messages.append(str(proc.stderr, encoding='ascii').rstrip())
-    messages.append(str(proc.stdout, encoding='ascii').rstrip())
-
-    return '\n'.join(messages)
+    return messages
 
 
 def git_checkout(repo: Repo, git_ref: str) -> str:
     """
     git_ref is of the form refs/heads/main or refs/tags/0.0.3
+    TODO: Compare sha before and after an issue warning if changed:
+        git ls-files -s requirements.txt | awk '{print $2}'
     """
     git_dir = repo.directory
     messages = []
@@ -190,11 +179,17 @@ def git_checkout(repo: Repo, git_ref: str) -> str:
         return '\n'.join(messages)
 
     if is_branch:
-        cmd = [git_cmd, 'pull']
+        cmd = [git_cmd, 'merge']
         logger.debug(f'{git_dir} {cmd}')
         proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
         messages.append(str(proc.stderr, encoding='ascii').rstrip())
         messages.append(str(proc.stdout, encoding='ascii').rstrip())
+
+        # cmd = [git_cmd, 'pull']
+        # logger.debug(f'{git_dir} {cmd}')
+        # proc = subprocess.run(cmd, cwd=git_dir.as_posix(), capture_output=True)
+        # messages.append(str(proc.stderr, encoding='ascii').rstrip())
+        # messages.append(str(proc.stdout, encoding='ascii').rstrip())
 
     return '\n'.join(messages)
 

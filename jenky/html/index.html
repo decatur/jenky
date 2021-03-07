@@ -79,7 +79,7 @@
     <legend>Git Actions</legend>
     <form>
         <div>
-            <button id="fetch" type="button">Fetch ⭯</button>
+            <!--<button id="fetch" type="button">Fetch ⭯</button>-->
             <button id="checkout" type="button">checkout</button>
             <code id="repoName"></code> current tag is <code id="gitRef"></code>
         </div>
@@ -88,7 +88,7 @@
                 <label for="gitRefs"></label>
                 <select id="gitRefs" size=40></select>
             </div>
-            <div id="gitMessage" style="background-color: azure;"></div>
+            <pre id="gitMessage" style="background-color: azure;"></pre>
         </div>
     </form>
 </fieldset>
@@ -208,7 +208,7 @@
         /** @type{jenky.Repo} */
         const repo = reposByName[repoName];
         select.oninput = evt => console.log(evt);
-        document.getElementById('fetch').onclick = () => gitFetch(repoName);
+        //document.getElementById('fetch').onclick = () => fetchRepo(repoName);
         document.getElementById('checkout').onclick = () => gitCheckout(repo, select.value);
 
         document.getElementById('repoName').textContent = repoName;
@@ -255,26 +255,27 @@
         postAction(repo, proc, 'restart');
     }
 
-    function gitFetch(repoName) {
-        const payload = {action: 'fetch'};
-        const msgElem = document.getElementById('gitMessage');
-        msgElem.textContent = 'Loading...';
-        fetch(`/repos/${repoName}`, {method: 'post', body: JSON.stringify(payload)})
-            .then(response => {
-                if (response.status === 200) {
-                    return response.json();
-                } else {
-                    msgElem.textContent = concernedFaceIterator.next() + response.statusText + ' ' + response.url;
-                }
-            })
-            .then(data => {
-                /** @type{jenky.Repo} */
-                const repo = /** @type{jenky.Repo} */ (data);
-                reposByName[repo.repoName] = repo;
-                renderRepo(repo.repoName);
-                msgElem.textContent = repo.gitMessage
-            })
-    }
+    // function gitFetch(repoName) {
+    //     const payload = {action: 'fetch'};
+    //     const msgElem = document.getElementById('gitMessage');
+    //     msgElem.textContent = 'Loading...';
+    //     fetch(`/repos/${repoName}`, {method: 'post', body: JSON.stringify(payload)})
+    //         .then(response => {
+    //             if (response.status === 200) {
+    //                 return response.json();
+    //             } else {
+    //                 msgElem.textContent = concernedFaceIterator.next() + response.statusText + ' ' + response.url;
+    //             }
+    //         })
+    //         .then(data => {
+    //             /** @type{jenky.Repo} */
+    //             const repo = /** @type{jenky.Repo} */ (data);
+    //             // reposByName[repo.repoName] = repo;
+    //             // renderRepo(repo.repoName);
+    //             //msgElem.textContent = repo.gitMessage
+    //             msgElem.textContent = ''
+    //         })
+    // }
 
     /**
      * @param {jenky.Repo} repo
@@ -283,10 +284,10 @@
     function gitCheckout(repo, gitRef) {
         const msgElem = document.getElementById('gitMessage');
 
-        if (repo.gitRef === gitRef) {
-            msgElem.textContent = `${concernedFaceIterator.next()} Reference ${gitRef} is already checked out`;
-            return
-        }
+        // if (repo.gitRef === gitRef) {
+        //     msgElem.textContent = `${concernedFaceIterator.next()} Reference ${gitRef} is already checked out`;
+        //     return
+        // }
 
         const payload = {action: 'checkout', gitRef: gitRef};
 
