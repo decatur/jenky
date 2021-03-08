@@ -6,7 +6,7 @@ package_data = {'': ['*'], 'jenky': ['html/*']}
 
 dist = setup(
     name='jenky',
-    version='0.1.0',
+    version='0.1.1',
     author="Wolfgang Kühn",
     description="A build and deploy server for Python developers",
     packages=['jenky'],
