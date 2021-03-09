@@ -30,13 +30,18 @@ python -m jenky
 python -m jenky --app_config=jenky_app_config.json --host=127.0.0.1 --port=8000
 ````
 
-or in a Dockerfile
+If you plan to monitor and restart Jenky with Jenky (eat you own food), please use the `restart_jenky.sh` script.
+
+# Docker
+
+Jenky may be your alternative to
+[Run multiple services in a container](https://docs.docker.com/config/containers/multi-service_container/)
+
+In that case, use
 ````shell script
 EXPOSE 5000
-ENTRYPOINT ["tini", "-g", "--", "python", "-m jenky",  "--app_config=jenky_app_config.json", "--port=5000", "--host=0.0.0.0"]
+CMD ["python", "-m", "jenky",  "--app_config=jenky_app_config.json", "--port=5000", "--host=0.0.0.0"]
 ````
-
-If you plan to monitor and restart Jenky with Jenky (eat you own food), please use the `restart_jenky.sh` script.
 
 # Configure Jenky
 
@@ -62,7 +67,7 @@ the repository:
 * remoteUrl [optional]: A link to a representation of the repository
 * processes: A list of processes
   * name: The unique (within this repo) name of the process
-  * cmd: The command to run the process
+  * cmd: The command to run the process; Currently this must be a python command, see below.
   * env: Additional environment
   * running: Shall the process be auto-restarted when starting Jenky
   * createTime: Set this to 0
@@ -86,6 +91,11 @@ Example `jenky_config.json` file:
   ]
 }
 ````
+
+## Python Runtime Resolution
+
+If Jenky finds a virtual environment in the `venv` folder, then the python runtime is resolved according this
+environment. 
 
 # Start Processes from Shell
 

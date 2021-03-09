@@ -201,35 +201,37 @@ def git_checkout(repo: Repo, git_ref: str) -> str:
 
 
 def run(name: str, cwd: Path, cmd: List[str], env: dict):
-    my_env = os.environ
+    my_env = os.environ.copy()
+    my_env.update(env)
+    my_env['JENKY_NAME'] = name
 
     if cmd[0] == 'python':
         executable = 'python'
-        # See https://docs.python.org/3/library/venv.html for the different location MS-Windows vs Linux.
-        if os.name == 'nt':
-            # Do not use the exe from the env because this is not a symbolic link and will generate 2 processes.
-            pyvenv = {k.strip(): v.strip() for k, v in (line.split('=') for line in open('venv/pyvenv.cfg', 'r'))}
-            exe = pyvenv['home'] + '/python.exe'
-            if os.access(exe, os.X_OK):
-                executable = exe
-            my_env['PYTHONPATH'] = 'venv/Lib/site-packages'
-        elif os.name == 'posix':
-            # This is a symlink, which is ok.
-            exe = 'venv/bin/python'
-            if os.access(exe, os.X_OK):
-                executable = exe
-            my_env['PYTHONPATH'] = 'venv/lib/python3.8/site-packages'
-        else:
-            assert False, 'Unsupported os ' + os.name
+        pyvenv_file = Path('venv/pyvenv.cfg')
+        if pyvenv_file.is_file():
+            # We have a virtual environment.
+            pyvenv = {k.strip(): v.strip() for k, v in (line.split('=') for line in open(pyvenv_file, 'r'))}
+            # See https://docs.python.org/3/library/venv.html for MS-Windows vs Linux.
+            if os.name == 'nt':
+                # Do not use the exe from the venv because this is not a symbolic link and will generate 2 processes.
+                # Note that we are guessing the location of the python installation. This will kind of works on
+                # Windows, but not on linux.
+                executable = pyvenv['home'] + '/python.exe'
+                my_env['PYTHONPATH'] = 'venv/Lib/site-packages'
+            elif os.name == 'posix':
+                # Note that we cannot just use pyvenv['home'], because that will probably say /usr/bin, but not
+                # what the python command was to create the venv!
+                # This is a symlink, which is ok.
+                # TODO: Shall we resolve the symlink?
+                executable = 'venv/bin/python'
+                my_env['PYTHONPATH'] = 'venv/lib/python3.8/site-packages'
+            else:
+                assert False, 'Unsupported os ' + os.name
 
         cmd = [executable] + cmd[1:]
 
     logger.debug(f'Running: {" ".join(cmd)}')
     logger.info(f'PYTHONPATH: {my_env["PYTHONPATH"]}')
-
-    assert 'PYTHONPATH' not in env
-    my_env.update(env)
-    my_env['JENKY_NAME'] = name
 
     out_file = cwd / f'{name}.out'
     out_file.unlink(missing_ok=True)
