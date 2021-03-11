@@ -123,18 +123,19 @@ python -m twine upload dist/*
 
 # Releases
 
-# 0.1.1
+## 0.1.2
+* PYTHONPATH is optional
+*
+
+## 0.1.1
 * Check `requirements.txt` for changes after checkout/merge.
 * Better git output formatting
 * improved git interaction
 * removed git refresh button
 
-# 0.1.0
+## 0.1.0
 * added graphs to README.
 * Do not use symlinkcopy of `python.exe`
 
-# 0.0.9
+## 0.0.9
 * added process auto-run feature
-
-
-

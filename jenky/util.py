@@ -231,7 +231,7 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
         cmd = [executable] + cmd[1:]
 
     logger.debug(f'Running: {" ".join(cmd)}')
-    logger.info(f'PYTHONPATH: {my_env["PYTHONPATH"]}')
+    logger.info(f'PYTHONPATH: {my_env.get("PYTHONPATH", "")}')
 
     out_file = cwd / f'{name}.out'
     out_file.unlink(missing_ok=True)
@@ -258,16 +258,16 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
     del popen  # Voodoo
 
 
-def kill(repos: List[Repo], repo_id: str, process_id: str) -> bool:
+def get_by_id(repos: List[Repo], repo_id: str, process_id: str) -> Tuple[Repo, Process]:
     repo = repo_by_id(repos, repo_id)
     procs = [proc for proc in repo.processes if proc.name == process_id]
     if not procs:
         raise ValueError(repo_id)
-    proc = procs[0]
-    pid_file = repo.directory / (proc.name + '.pid')
-    pid = int(pid_file.read_text())
-    pid_file.unlink()
+    return repo, procs[0]
 
+
+def kill(repos: List[Repo], repo_id: str, process_id: str) -> bool:
+    repo, proc = get_by_id(repos, repo_id, process_id)
     p = running_process(proc, repo.directory)
     if p:
         p.terminate()
@@ -288,11 +288,7 @@ def repo_by_id(repos: List[Repo], repo_id: str) -> Repo:
 
 
 def restart(repos: List[Repo], repo_id: str, process_id: str):
-    repo = repo_by_id(repos, repo_id)
-    procs = [proc for proc in repo.processes if proc.name == process_id]
-    if not procs:
-        raise ValueError(repo_id)
-    proc = procs[0]
+    repo, proc = get_by_id(repos, repo_id, process_id)
     p = running_process(proc, repo.directory)
     assert p is None
     run(proc.name, repo.directory, proc.cmd, proc.env)
