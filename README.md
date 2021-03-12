@@ -47,7 +47,7 @@ CMD ["python", "-m", "jenky",  "--app_config=jenky_app_config.json", "--port=500
 
 A Jenky instance is customized via the `--app_config` command line option. You specify a JSON document with the fiels
 * appName: The branding of the Jenky instance, as shown in the title of the UI.
-* reposBase: Path to a folder. All subfolders containing a `jenky_config.json` are considered repositories.
+* reposBase: Path to a folder. All sub-folders containing a `jenky_config.json` are considered repositories.
 * gitCmd: The command to execute git on the target server.
 
 Example `jenky_app_config.json` document:
@@ -125,7 +125,8 @@ python -m twine upload dist/*
 
 ## 0.1.2
 * PYTHONPATH is optional
-*
+* Fixed double unlick of pidfile
+* Fixed css layout for reference select
 
 ## 0.1.1
 * Check `requirements.txt` for changes after checkout/merge.
