@@ -1,9 +1,9 @@
-namespace jenky {
+declare namespace jenky {
     interface Process {
         name: string,
         running: boolean,
         createTime: number
-        serviceUrl: string
+        serviceSubDomain: string
     }
 
     interface GitRef {

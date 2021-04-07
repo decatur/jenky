@@ -153,10 +153,12 @@
                 }
 
                 td = td.nextElementSibling;
-                if (proc.serviceUrl) {
+                if (proc.serviceSubDomain) {
                     td.textContent = '';
                     const a = document.createElement('a');
-                    a.href = proc.serviceUrl;
+                    const domains = location.hostname.split('.');
+                    domains[0] = proc.serviceSubDomain;
+                    a.href = location.protocol + '//' + domains.join('.');
                     a.textContent = proc.name;
                     td.appendChild(a);
                 } else {

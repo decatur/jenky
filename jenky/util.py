@@ -23,7 +23,7 @@ class Process(BaseModel):
     env: dict
     running: bool
     create_time: float = Field(..., alias='createTime')
-    service_url: Optional[str] = Field(alias='serviceUrl')
+    service_sub_domain: Optional[str] = Field(alias='serviceSubDomain')
 
 
 class Repo(BaseModel):
