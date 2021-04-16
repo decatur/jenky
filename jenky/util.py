@@ -180,6 +180,7 @@ def repo_by_id(repos: List[Repo], repo_id: str) -> Repo:
 
 
 def restart(repos: List[Repo], repo_id: str, process_id: str):
+    # TODO: Rename to start, implement restart=kill+start
     repo, proc = get_by_id(repos, repo_id, process_id)
     p = running_process(proc, repo.directory)
     assert p is None
