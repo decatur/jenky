@@ -1,4 +1,7 @@
 # Note: FastApi does not support asyncio subprocesses, so do not use it!
+
+raise Exception('Deprecated')
+
 import json
 import logging
 import os
@@ -125,26 +128,6 @@ def git_checkout(repo: Repo, git_ref: str) -> str:
         messages.append('Warning: requirements.txt did change!')
 
     return '\n'.join(messages)
-
-
-def get_tail(path: Path) -> List[str]:
-    logger.debug(path)
-    with open(path.as_posix(), "rb") as f:
-        try:
-            f.seek(-50*1024, os.SEEK_END)
-            byte_lines = f.readlines()
-            if len(byte_lines):
-                byte_lines = byte_lines[1:]
-            else:
-                # So we are in the middle of a line and could hit a composed unicode character.
-                # But we just ignore that...
-                pass
-        except:
-            # file size too short
-            f.seek(0)
-            byte_lines = f.readlines()
-    lines = [str(byte_line, encoding='utf8') for byte_line in byte_lines]
-    return lines
 
 
 class GitAction(BaseModel):

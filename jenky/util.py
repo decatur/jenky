@@ -72,7 +72,7 @@ def running_process(proc: Process, directory: Path) -> Optional[psutil.Process]:
 
     try:
         # pprint(p.environ())
-        if (p.environ().get('JENKY_NAME', '') == proc.name):
+        if p.environ().get('JENKY_NAME', '') == proc.name:
             return p
     except psutil.AccessDenied:
         pass
@@ -253,6 +253,7 @@ def auto_run_processes(repos: List[Repo]):
 def git_tag(git_hash: str, git_dir: Path) -> Optional[str]:
     """
     Returns the tag name for the provided hash or None if there is no such tag.
+    This method does not need nor uses a git client installation.
     """
     for tag in (git_dir / 'refs' / 'tags').iterdir():
         if git_hash == tag.read_text(encoding='ascii').strip():
