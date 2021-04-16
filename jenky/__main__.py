@@ -4,7 +4,6 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI
@@ -13,7 +12,7 @@ from pydantic import BaseModel
 from starlette.responses import RedirectResponse, Response
 
 from jenky import util
-from jenky.util import Config, Repo, get_tail, git_refs, git_fetch
+from jenky.util import Config, get_tail
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -33,19 +32,10 @@ def home():
 
 @app.get("/repos")
 def get_repos() -> Config:
+    # refresh repos
+    config.repos = util.collect_repos(repo_dirs)
     util.running_processes(config.repos)
     return config
-
-
-@app.get("/repos/{repo_id}")
-def get_repo(repo_id: str) -> Repo:
-    repo = util.repo_by_id(config.repos, repo_id)
-    if util.is_git_repo(repo):
-        git_fetch(repo)
-        repo.git_tag, repo.git_refs = git_refs(repo.directory)
-    else:
-        repo.git_message = 'Not a git repository'
-    return repo
 
 
 class Action(BaseModel):
@@ -78,22 +68,6 @@ def get_process_log(repo_id: str, process_id: str, std_x: str) -> Response:
         return Response(content='Not Found', media_type="text/plain", status_code=404)
 
 
-class GitAction(BaseModel):
-    action: str
-    gitRef: Optional[str]
-
-
-@app.post("/repos/{repo_id}")
-def post_repo(repo_id: str, action: GitAction) -> dict:
-    repo = util.repo_by_id(config.repos, repo_id)
-    if action.action == 'checkout':
-        message = util.git_checkout(repo, git_ref=action.gitRef)
-    else:
-        assert False, 'Invalid action ' + action.action
-
-    return dict(repo_id=repo_id, action=action.action, message=message)
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--host', type=str, help='host', default="127.0.0.1")
 parser.add_argument('--port', type=int, help='port', default=8000)
@@ -103,10 +77,8 @@ args = parser.parse_args()
 app_config = Path(args.app_config)
 logger.info(f'Reading config from {app_config}')
 data = json.loads(app_config.read_text(encoding='utf8'))
-repos_base = (app_config.parent / data['reposBase']).resolve()
-logger.info(f'repos_base is {repos_base}')
-config = Config(appName=data['appName'], repos=util.collect_repos(repos_base))
-util.git_support(data['gitCmd'])
+repo_dirs = [(app_config.parent / repo).resolve() for repo in data['repos']]
+config = Config(appName=data['appName'], repos=util.collect_repos(repo_dirs))
 util.auto_run_processes(config.repos)
 
 uvicorn.run(app, host=args.host, port=args.port)

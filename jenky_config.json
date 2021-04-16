@@ -3,13 +3,6 @@
   "remoteUrl": "https://github.com/decatur/jenky",
   "processes": [
     {
-      "name": "jenky",
-      "cmd": [],
-      "env": {},
-      "running": false,
-      "createTime": 0
-    },
-    {
       "name": "sample",
       "cmd": [
         "python",

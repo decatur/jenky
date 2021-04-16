@@ -1,5 +1,5 @@
 {
   "appName": "Jenky 0.0.2, the gentle deploying app for Python",
-  "reposBase": "../",
+  "repos": ["./"],
   "gitCmd": "C:/ws/tools/PortableGit/bin/git.exe"
 }
