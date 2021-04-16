@@ -75,11 +75,11 @@
     </tr>
 </template>
 
+<!--
 <fieldset>
     <legend>Git Actions</legend>
     <form>
         <div>
-            <!--<button id="fetch" type="button">Fetch ⭯</button>-->
             <button id="checkout" type="button">checkout</button>
             <code id="repoName"></code> current tag is <code id="gitRef"></code>
         </div>
@@ -92,6 +92,7 @@
         </div>
     </form>
 </fieldset>
+-->
 
 </body>
 <script type="module">
@@ -138,19 +139,14 @@
                 }
 
                 td = td.nextElementSibling;
-                if ( index === 0) {
-                    td.firstElementChild.value = repo.repoName;
-                    td.firstElementChild.addEventListener('change', () => {
-                        fetchRepo(name)
-                            .then(repo => {
-                                reposByName[name] = repo;
-                                renderRepo(name);
-                            })
-                    });
-                } else {
-                    // Have only ONE radio button per repo!
-                    td.textContent = '';
-                }
+                td.textContent = repo.gitRef; //firstElementChild.value = repo.repoName;
+                    // td.firstElementChild.addEventListener('change', () => {
+                    //     fetchRepo(name)
+                    //         .then(repo => {
+                    //             reposByName[name] = repo;
+                    //             renderRepo(name);
+                    //         })
+                    // });
 
                 td = td.nextElementSibling;
                 if (proc.serviceSubDomain) {

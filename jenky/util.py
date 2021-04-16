@@ -335,7 +335,8 @@ def collect_repos(repos_base: Path) -> List[Repo]:
             else:
                 data['directory'] = repo_dir
 
-            data["gitRef"] = ""
+            if (repo_dir / '.git').is_dir():
+                data["gitRef"] = git_ref(repo_dir / '.git')
             data["gitRefs"] = []
             data["gitMessage"] = ""
 
@@ -353,3 +354,30 @@ def auto_run_processes(repos: List[Repo]):
                     run(proc.name, repo.directory, proc.cmd, proc.env)
                     continue
             logger.info(f'Not Auto-running {repo.repoName}.{proc.name}')
+
+
+def git_tag(hash: str, git_dir: Path) -> Optional[str]:
+    for tag in (git_dir / 'refs' / 'tags').iterdir():
+        if hash == tag.read_text(encoding='ascii').strip():
+            return tag.name
+    return None
+
+
+def git_ref(git_dir: Path) -> str:
+    """
+    Finds the git reference (tag or branch) of this working directory.
+    """
+    # git_dir = Path('.git')
+    if not git_dir.is_dir():
+        return 'Not a git repo'
+
+    head = (git_dir / 'HEAD').read_text(encoding='ascii').strip()
+    if head.startswith('ref:'):
+        # This is a branch, example "ref: refs/heads/master"
+        ref_path = head.split()[1]
+        hash = (git_dir / ref_path).read_text(encoding='ascii').strip()
+        tag = git_tag(hash, git_dir)
+        return tag if tag else ref_path
+    else:
+        # This is detached
+        return git_tag(head, git_dir)
