@@ -115,6 +115,10 @@ python -m twine upload dist/*
 
 # Releases
 
+## 0.2.0
+
+* Deprecated git client support.
+
 ## 0.1.2
 * PYTHONPATH is optional
 * Fixed double unlick of pidfile
