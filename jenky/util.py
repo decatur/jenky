@@ -1,4 +1,5 @@
 # Note: FastApi does not support asyncio subprocesses, so do not use it!
+import glob
 import json
 import logging
 import os
@@ -30,8 +31,8 @@ class Repo(BaseModel):
     repoName: str
     directory: Path
     git_tag: str = Field(..., alias='gitRef')
-    git_refs: List[dict] = Field(..., alias='gitRefs')
-    git_message: str = Field(..., alias='gitMessage')
+    # git_refs: List[dict] = Field(..., alias='gitRefs')
+    # git_message: str = Field(..., alias='gitMessage')
     processes: List[Process]
     remote_url: Optional[str] = Field(alias='remoteUrl')
 
@@ -233,9 +234,9 @@ def collect_repos(repo_dirs: List[Path]) -> List[Repo]:
                 data["gitRef"] = git_ref(repo_dir / '.git')
 
             if not data["gitRef"]:
-                data["gitRef"] = 'No GIT'
-            data["gitRefs"] = []
-            data["gitMessage"] = ""
+                data["gitRef"] = 'No git ref found'
+            # data["gitRefs"] = []
+            # data["gitMessage"] = ""
 
             repos.append(Repo.parse_obj(data))
     return repos
@@ -253,18 +254,22 @@ def auto_run_processes(repos: List[Repo]):
             logger.info(f'Not Auto-running {repo.repoName}.{proc.name}')
 
 
-def git_tag(git_hash: str, git_dir: Path) -> Optional[str]:
+def git_named_ref(git_hash: str, git_dir: Path) -> str:
     """
-    Returns the tag name for the provided hash or None if there is no such tag.
+    Returns the named tag or reference for the provided hash or None if there is no such tag.
     This method does not need nor uses a git client installation.
     """
-    for tag in (git_dir / 'refs' / 'tags').iterdir():
-        if git_hash == tag.read_text(encoding='ascii').strip():
-            return tag.name
-    return None
+
+    for item_name in glob.iglob(git_dir.as_posix() + '/refs/**', recursive=True):
+        file = Path(item_name)
+        if file.is_file():
+            if git_hash == file.read_text(encoding='ascii').strip():
+                return item_name
+
+    return git_hash
 
 
-def git_ref(git_dir: Path) -> str:
+def git_ref(git_dir: Path) -> Optional[str]:
     """
     Finds the git reference (tag or branch) of this working directory.
     This method does not need nor uses a git client installation.
@@ -278,8 +283,8 @@ def git_ref(git_dir: Path) -> str:
         # This is a branch, example "ref: refs/heads/master"
         ref_path = head.split()[1]
         git_hash = (git_dir / ref_path).read_text(encoding='ascii').strip()
-        tag = git_tag(git_hash, git_dir)
+        tag = git_named_ref(git_hash, git_dir)
         return tag if tag else ref_path
     else:
         # This is detached, and head is a hash AFAIK
-        return git_tag(head, git_dir)
+        return git_named_ref(head, git_dir)
