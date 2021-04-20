@@ -231,6 +231,9 @@ def collect_repos(repo_dirs: List[Path]) -> List[Repo]:
 
             if (repo_dir / '.git').is_dir():
                 data["gitRef"] = git_ref(repo_dir / '.git')
+
+            if not data["gitRef"]:
+                data["gitRef"] = 'No GIT'
             data["gitRefs"] = []
             data["gitMessage"] = ""
 
