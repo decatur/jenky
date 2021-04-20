@@ -256,15 +256,14 @@ def auto_run_processes(repos: List[Repo]):
 
 def git_named_ref(git_hash: str, git_dir: Path) -> str:
     """
-    Returns the named tag or reference for the provided hash or None if there is no such tag.
+    Returns the named tag or reference for the provided hash or the hash if there is no such reference.
     This method does not need nor uses a git client installation.
     """
 
     for item_name in glob.iglob(git_dir.as_posix() + '/refs/**', recursive=True):
         file = Path(item_name)
-        if file.is_file():
-            if git_hash == file.read_text(encoding='ascii').strip():
-                return item_name
+        if file.is_file() and git_hash == file.read_text(encoding='ascii').strip():
+            return file.name
 
     return git_hash
 
