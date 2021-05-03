@@ -4,6 +4,7 @@ declare namespace jenky {
         running: boolean,
         createTime: number
         serviceSubDomain: string
+        serviceHomePath: string
     }
 
     interface GitRef {

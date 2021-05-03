@@ -25,6 +25,7 @@ class Process(BaseModel):
     running: bool
     create_time: float = Field(..., alias='createTime')
     service_sub_domain: Optional[str] = Field(alias='serviceSubDomain')
+    service_home_path: Optional[str] = Field(alias='serviceHomePath')
 
 
 class Repo(BaseModel):

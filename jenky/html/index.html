@@ -155,7 +155,7 @@
                     const a = document.createElement('a');
                     const domains = location.hostname.split('.');
                     domains[0] = proc.serviceSubDomain;
-                    a.href = location.protocol + '//' + domains.join('.');
+                    a.href = location.protocol + '//' + domains.join('.') + (proc.serviceHomePath || '');
                     a.textContent = proc.name;
                     td.appendChild(a);
                 } else {
