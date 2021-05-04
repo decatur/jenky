@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Set
 import subprocess
 
 import psutil
@@ -95,6 +95,7 @@ def running_processes(repos: List[Repo]):
 
 
 def run(name: str, cwd: Path, cmd: List[str], env: dict):
+    # TODO: On systemd, use it and replace jenky_config with service unit file.
     my_env = os.environ.copy()
     my_env.update(env)
     my_env['JENKY_NAME'] = name
@@ -232,7 +233,7 @@ def collect_repos(repo_dirs: List[Path]) -> List[Repo]:
                 data['directory'] = repo_dir
 
             if (repo_dir / '.git').is_dir():
-                data["gitRef"] = git_ref(repo_dir / '.git')
+                data["gitRef"] = str(git_ref(repo_dir / '.git'))
 
             if not data["gitRef"]:
                 data["gitRef"] = 'No git ref found'
@@ -255,36 +256,34 @@ def auto_run_processes(repos: List[Repo]):
             logger.info(f'Not Auto-running {repo.repoName}.{proc.name}')
 
 
-def git_named_ref(git_hash: str, git_dir: Path) -> str:
+def git_named_refs(git_hash: str, git_dir: Path) -> Set[str]:
     """
-    Returns the named tag or reference for the provided hash or the hash if there is no such reference.
+    Returns all named tag or reference for the provided hash and the hash.
     This method does not need nor uses a git client installation.
     """
 
+    refs = set([git_hash])
     for item_name in glob.iglob(git_dir.as_posix() + '/refs/**', recursive=True):
         file = Path(item_name)
         if file.is_file() and git_hash == file.read_text(encoding='ascii').strip():
-            return file.name
+            refs.add(file.name)
 
-    return git_hash
+    return refs
 
 
-def git_ref(git_dir: Path) -> Optional[str]:
+def git_ref(git_dir: Path) -> Set[str]:
     """
     Finds the git reference (tag or branch) of this working directory.
     This method does not need nor uses a git client installation.
     """
-    # git_dir = Path('.git')
-    if not git_dir.is_dir():
-        return 'Not a git repo'
 
     head = (git_dir / 'HEAD').read_text(encoding='ascii').strip()
     if head.startswith('ref:'):
         # This is a branch, example "ref: refs/heads/master"
         ref_path = head.split()[1]
         git_hash = (git_dir / ref_path).read_text(encoding='ascii').strip()
-        tag = git_named_ref(git_hash, git_dir)
-        return tag if tag else ref_path
     else:
         # This is detached, and head is a hash AFAIK
-        return git_named_ref(head, git_dir)
+        git_hash = head
+
+    return git_named_refs(git_hash, git_dir)

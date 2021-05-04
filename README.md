@@ -99,7 +99,7 @@ environment.
 * [spotify/dh-virtualenv: Python virtualenvs in Debian packages](https://github.com/spotify/dh-virtualenv)
 * [How We Deploy Python Code | Nylas](https://www.nylas.com/blog/packaging-deploying-python/)
 * [Deployment - Full Stack Python](https://www.fullstackpython.com/deployment.html)
-
+* [How to run systemd in a container](https://developers.redhat.com/blog/2019/04/24/how-to-run-systemd-in-a-container/)
 
 # Package and Publish
 
