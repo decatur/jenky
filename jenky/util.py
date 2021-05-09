@@ -217,30 +217,35 @@ def is_file(p: Path) -> bool:
         return False
 
 
-def collect_repos(repo_dirs: List[Path]) -> List[Repo]:
+def collect_repos(repo_infos: List[dict]) -> List[Repo]:
     repos: List[Repo] = []
 
-    for repo_dir in repo_dirs:
+    for repo_info in repo_infos:
+        repo_dir = repo_info['path']
         logger.info(f'Collect repo {repo_dir}')
-        config_file = repo_dir / 'jenky_config.json'
-        if is_file(config_file):
-            logger.info(f'Collecting {repo_dir}')
+        config = repo_info.get('config', dict())
+        if not config:
+            config_file = repo_dir / 'jenky_config.json'
+            if is_file(config_file):
+                logger.info(f'Collecting {repo_dir}')
 
-            data = json.loads(config_file.read_text(encoding='utf8'))
-            if 'directory' in data:
-                data['directory'] = (repo_dir / data['directory']).resolve()
+                config = json.loads(config_file.read_text(encoding='utf8'))
+
+        if config:
+            if 'directory' in config:
+                config['directory'] = (repo_dir / config['directory']).resolve()
             else:
-                data['directory'] = repo_dir
+                config['directory'] = repo_dir
 
             if (repo_dir / '.git').is_dir():
-                data["gitRef"] = str(git_ref(repo_dir / '.git'))
+                config["gitRef"] = str(git_ref(repo_dir / '.git'))
 
-            if not data["gitRef"]:
-                data["gitRef"] = 'No git ref found'
+            if not config["gitRef"]:
+                config["gitRef"] = 'No git ref found'
             # data["gitRefs"] = []
             # data["gitMessage"] = ""
 
-            repos.append(Repo.parse_obj(data))
+            repos.append(Repo.parse_obj(config))
     return repos
 
 

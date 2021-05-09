@@ -33,7 +33,7 @@ def home():
 @app.get("/repos")
 def get_repos() -> Config:
     # refresh repos
-    config.repos = util.collect_repos(repo_dirs)
+    config.repos = util.collect_repos(app_config['repos'])
     util.running_processes(config.repos)
     return config
 
@@ -74,11 +74,14 @@ parser.add_argument('--port', type=int, help='port', default=8000)
 parser.add_argument('--app_config', type=str, help='jenky_app_config', default="jenky_app_config.json")
 args = parser.parse_args()
 
-app_config = Path(args.app_config)
-logger.info(f'Reading config from {app_config}')
-data = json.loads(app_config.read_text(encoding='utf8'))
-repo_dirs = [(app_config.parent / repo).resolve() for repo in data['repos']]
-config = Config(appName=data['appName'], repos=util.collect_repos(repo_dirs))
+app_config_path = Path(args.app_config)
+logger.info(f'Reading config from {app_config_path}')
+app_config = json.loads(app_config_path.read_text(encoding='utf8'))
+for repo in app_config['repos']:
+    repo['path'] = (app_config_path.parent / repo['path']).resolve()
+
+# repo_dirs = [(app_config_path.parent / repo).resolve() for repo in app_config['repos']]
+config = Config(appName=app_config['appName'], repos=util.collect_repos(app_config['repos']))
 util.auto_run_processes(config.repos)
 
 uvicorn.run(app, host=args.host, port=args.port)
