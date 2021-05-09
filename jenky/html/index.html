@@ -70,8 +70,9 @@
             <label style="display: inline-block"><input type="radio" name="status" value="stop">Stop</label>
         </td>
         <td>
-            <a href="" target="">stdout</a>
-            <!-- <a href="" target="">stderr</a> -->
+            <a href="" target="">out</a>
+            <a href="" target="">log</a>
+            <a href="" target="">log.1</a>
         </td>
     </tr>
 </template>
@@ -188,9 +189,9 @@
                 td = td.nextElementSibling;
                 let a = td.firstElementChild;
                 while (a) {
-                    const std = a.textContent;
-                    a.href = `/repos/${name}/processes/${proc.name}/${std}`;
-                    a.target = `${proc.name}_${std}`;
+                    const logType = a.textContent;
+                    a.href = `/repos/${name}/processes/${proc.name}/${logType}`;
+                    a.target = `${proc.name}_${logType}`;
                     a = a.nextElementSibling;
                 }
 

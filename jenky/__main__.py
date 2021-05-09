@@ -57,10 +57,10 @@ def change_process_state(repo_id: str, process_id: str, action: Action):
     return dict(repo_id=repo_id, process_id=process_id, action=action.action)
 
 
-@app.get("/repos/{repo_id}/processes/{process_id}/{std_x}")
-def get_process_log(repo_id: str, process_id: str, std_x: str) -> Response:
+@app.get("/repos/{repo_id}/processes/{process_id}/{log_type}")
+def get_process_log(repo_id: str, process_id: str, log_type: str) -> Response:
     repo = util.repo_by_id(config.repos, repo_id)
-    path = repo.directory / f'{process_id}.{std_x[3:]}'
+    path = repo.directory / f'{process_id}.{log_type}'
     if path.exists():
         lines = get_tail(path)
         return Response(content=''.join(lines), media_type="text/plain")
