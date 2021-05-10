@@ -115,6 +115,10 @@ python -m twine upload dist/*
 
 # Releases
 
+## 0.2.3
+
+* Repo Config can now be embedded in App Config
+
 ## 0.2.0
 
 * Deprecated git client support.
