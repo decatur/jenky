@@ -16,6 +16,7 @@ logger = logging.getLogger()
 # git_cmd = 'git'
 git_cmd: str = ''
 git_version: str = ''
+cache_dir: Path
 
 
 class Process(BaseModel):
@@ -85,17 +86,15 @@ def find_process_by_name(name: str, pid_file: Path) -> Optional[psutil.Process]:
 
 
 def sync_process(proc: Process, directory: Path):
-    pid_file = directory / (proc.name + '.json')
+    pid_file = cache_dir / (proc.name + '.json')
     p = find_process_by_name(proc.name, pid_file)
-
-    diff = 'In sync'
 
     if proc.keep_running and p:
         pass
     elif not proc.keep_running and not p:
         pass
     elif not proc.keep_running and p:
-        diff = 'Reaping process'
+        logger.warning(f'Reaping process {proc.name}')
         p.terminate()
         # We need to wait unless a zombie stays in process list!
         gone, alive = psutil.wait_procs([p], timeout=3, callback=None)
@@ -103,12 +102,10 @@ def sync_process(proc: Process, directory: Path):
             process.kill()
         p = None
     elif proc.keep_running and not p:
-        diff = 'Restarting process'
-        p = start_process(proc.name, directory, proc.cmd, proc.env)
+        logger.warning(f'Restarting process {proc.name}')
+        p = start_process(proc.name, cache_dir, proc.cmd, proc.env)
         if p:
             pid_file.write_text(json.dumps(dict(pid=p.pid, create_time=p.create_time())))
-
-    logger.info(diff)
 
     if p:
         proc.create_time = p.create_time()
@@ -246,27 +243,20 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
         logger.info(f'Collect repo {repo_dir}')
         config = repo_info.get('config', dict())
         if not config:
-            assert False, 'Deprecated: jenky_config.json'
-            config_file = repo_dir / 'jenky_config.json'
-            if is_file(config_file):
-                logger.info(f'Collecting {repo_dir}')
-                config = json.loads(config_file.read_text(encoding='utf8'))
+            continue
 
-        if config:
-            if 'directory' in config:
-                config['directory'] = (repo_dir / config['directory']).resolve()
-            else:
-                config['directory'] = repo_dir
+        if 'directory' in config:
+            config['directory'] = (repo_dir / config['directory']).resolve()
+        else:
+            config['directory'] = repo_dir
 
-            if (repo_dir / '.git').is_dir():
-                config["gitRef"] = str(git_ref(repo_dir / '.git'))
+        if (repo_dir / '.git').is_dir():
+            config["gitRef"] = str(git_ref(repo_dir / '.git'))
 
-            if not config.get("gitRef", ""):
-                config["gitRef"] = 'No git ref found'
-            # data["gitRefs"] = []
-            # data["gitMessage"] = ""
+        if not config.get("gitRef", ""):
+            config["gitRef"] = 'No git ref found'
 
-            repos.append(Repo.parse_obj(config))
+        repos.append(Repo.parse_obj(config))
     return repos
 
 

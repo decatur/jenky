@@ -8,13 +8,13 @@
         "remoteUrl": "https://github.com/decatur/jenky",
         "processes": [
           {
-            "name": "sample",
+            "name": "sample_1",
             "cmd": [
               "python",
               "sample/sample_1.py"
             ],
             "env": {},
-            "keepRunning": false,
+            "keepRunning": true,
             "createTime": 0
           }
         ]

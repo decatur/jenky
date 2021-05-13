@@ -197,7 +197,7 @@
                 }
             })
             .then(data => console.log(data))
-            .then(fetchRepos)
+            .then(fetchLogs)
     }
 
     function fetchRepos() {
@@ -214,20 +214,18 @@
     let logs = [];
     function fetchLogs() {
         const params = new URLSearchParams();
-        let created = 0.0;
         if (logs.length) {
-            created = logs[0][0];
+            params.append('last_event_id', String(logs[0][0]));
         }
-        params.append('created', String(created));
         fetch('/logs?' + params.toString())
             .then(response => response.json())
-            .then(newLogs => {
-                logs = newLogs.concat(logs);
+            .then(data => {
+                logs = data['logsSince'].concat(logs).slice(0, data['maxLength']);
                 document.getElementById('logs').textContent = JSON.stringify(logs.map(item => item[1]), null, 4);
             })
     }
 
     fetchRepos()
-
+    fetchLogs()
 </script>
 </html>

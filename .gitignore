@@ -1,3 +1,5 @@
+.jenky_cache
+
 .idea/.gitignore
 .idea/inspectionProfiles/
 .idea/jenky.iml
@@ -11,12 +13,5 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-*.out
-*.pid
-.idea/
 dist
 lunatic/
-
-
-
-!.idea/

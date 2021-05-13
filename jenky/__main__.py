@@ -2,13 +2,12 @@ import argparse
 import asyncio
 import collections
 import json
-import logging
 import logging.handlers
+import os
 import sys
 import time
 from pathlib import Path
-from queue import SimpleQueue
-from typing import List, Callable
+from typing import List, Callable, Tuple
 
 import uvicorn
 from fastapi import FastAPI
@@ -19,26 +18,35 @@ from starlette.responses import RedirectResponse, Response
 from jenky import util
 from jenky.util import Config, get_tail
 
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler(sys.stdout)
-handler.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s %(funcName)s - %(message)s')
-logger.addHandler(handler)
-
 
 class ListHandler(logging.StreamHandler):
     def __init__(self):
         super().__init__()
-        self.buffer = collections.deque(maxlen=200)
+        self.buffer = collections.deque(maxlen=1000)
+        self._current_time = 0
+        self._current_index = 0
+
+    def unique_id(self, timestamp: float) -> str:
+        if int(timestamp) == self._current_time:
+            self._current_index += self._current_index
+        else:
+            self._current_index = 0
+            self._current_time = int(timestamp)
+        return str(f'{self._current_time}i{self._current_index}')
 
     def emit(self, record):
         msg = self.format(record)
-        self.buffer.append([record.created, msg])
+        self.buffer.appendleft((self.unique_id(record.created), msg))
 
 
-handler = ListHandler()
-handler.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s %(funcName)s - %(message)s')
-logger.addHandler(handler)
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+stream_handler = logging.StreamHandler(sys.stdout)
+list_handler = ListHandler()
+
+for handler in (stream_handler, list_handler):
+    handler.formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s')
+    logger.addHandler(handler)
 
 app = FastAPI()
 
@@ -52,7 +60,7 @@ async def schedule(action: Callable[[], float], start_at: float):
 
 
 def sync_processes_action() -> float:
-    # util.sync_processes(config.repos)
+    util.sync_processes(config.repos)
     return time.time() + 5
 
 
@@ -62,7 +70,7 @@ async def startup_event():
 
 
 html_root = Path(__file__).parent / 'html'
-app.mount("/static", StaticFiles(directory=html_root), name="mymountname")
+app.mount("/static", StaticFiles(directory=html_root.as_posix()), name="mymountname")
 
 
 @app.get("/")
@@ -87,7 +95,7 @@ def change_process_state(repo_id: str, process_id: str, action: Action):
     assert action.action in {'kill', 'restart'}
     repo, proc = util.get_by_id(config.repos, repo_id, process_id)
     proc.keep_running = (action.action == 'restart')
-    util.sync_process(proc, repo.directory)
+    # util.sync_process(proc, repo.directory)
     time.sleep(1)
 
     return dict(repo_id=repo_id, process_id=process_id, action=action.action)
@@ -105,29 +113,35 @@ def get_process_log(repo_id: str, process_id: str, log_type: str) -> Response:
 
 
 @app.get("/logs")
-def get_logs(created: float) -> Response:
-    diff = []
-    for item in reversed(handler.buffer):
-        diff.append(item)
-        if item[0] == created:
+def get_logs(last_event_id: str = None) -> dict:
+    logs_since: List[Tuple[str, str]] = []
+    for item in list_handler.buffer:
+        if item[0] == last_event_id:
             break
-    return diff
+        logs_since.append(item)
+
+    return dict(logsSince=logs_since, maxLength=list_handler.buffer.maxlen)
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--host', type=str, help='host', default="127.0.0.1")
 parser.add_argument('--port', type=int, help='port', default=8000)
-parser.add_argument('--app_config', type=str, help='jenky_app_config', default="jenky_app_config.json")
+parser.add_argument('--app-config', type=str, help='jenky_app_config', default="jenky_app_config.json")
+parser.add_argument('--log-level', type=str, help='log level', default="INFO")
+parser.add_argument('--cache-dir', type=str, help='cache dir', default=".jenky_cache")
 args = parser.parse_args()
 
-app_config_path = Path(args.app_config)
-logger.info(f'Reading config from {app_config_path}')
+logger.info(args)
+
+logger.setLevel(logging.__dict__[args.log_level])
+
+app_config_path = Path(args.app_config.format(**os.environ))
+util.cache_dir = Path(args.cache_dir)
+assert util.cache_dir.is_dir()
 app_config = json.loads(app_config_path.read_text(encoding='utf8'))
 for repo in app_config['repos']:
     repo['path'] = (app_config_path.parent / repo['path']).resolve()
 
-# repo_dirs = [(app_config_path.parent / repo).resolve() for repo in app_config['repos']]
 config = Config(appName=app_config['appName'], repos=util.collect_repos(app_config['repos']))
-
 
 uvicorn.run(app, host=args.host, port=args.port)
