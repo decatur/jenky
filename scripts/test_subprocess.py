@@ -43,7 +43,7 @@ pyvenv = {k.strip():v.strip() for k, v in (l.split('=') for l in open('venv/pyve
 
 f = open('scripts/test_subprocess.log', 'w')
 popen = subprocess.Popen(
-    [pyvenv['home'] + '/python.exe', 'scripts/sample.py'],
+    [pyvenv['home'] + '/python.exe', 'scripts/sample_1.py'],
     stdout=f,
     # stdin=subprocess.DEVNULL,
     stderr=subprocess.STDOUT

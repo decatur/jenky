@@ -1,9 +1,14 @@
 import argparse
+import asyncio
+import collections
 import json
 import logging
+import logging.handlers
 import sys
 import time
 from pathlib import Path
+from queue import SimpleQueue
+from typing import List, Callable
 
 import uvicorn
 from fastapi import FastAPI
@@ -20,7 +25,42 @@ handler = logging.StreamHandler(sys.stdout)
 handler.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s %(funcName)s - %(message)s')
 logger.addHandler(handler)
 
+
+class ListHandler(logging.StreamHandler):
+    def __init__(self):
+        super().__init__()
+        self.buffer = collections.deque(maxlen=200)
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.buffer.append([record.created, msg])
+
+
+handler = ListHandler()
+handler.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s %(funcName)s - %(message)s')
+logger.addHandler(handler)
+
 app = FastAPI()
+
+
+async def schedule(action: Callable[[], float], start_at: float):
+    while True:
+        await asyncio.sleep(start_at - time.time())
+        start_at = action()
+        if start_at < 0.:
+            break
+
+
+def sync_processes_action() -> float:
+    # util.sync_processes(config.repos)
+    return time.time() + 5
+
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(schedule(sync_processes_action, time.time() + 5))
+
+
 html_root = Path(__file__).parent / 'html'
 app.mount("/static", StaticFiles(directory=html_root), name="mymountname")
 
@@ -33,8 +73,8 @@ def home():
 @app.get("/repos")
 def get_repos() -> Config:
     # refresh repos
-    config.repos = util.collect_repos(app_config['repos'])
-    util.running_processes(config.repos)
+    # config.repos = util.collect_repos(app_config['repos'])
+    # util.sync_processes(config.repos)
     return config
 
 
@@ -44,15 +84,11 @@ class Action(BaseModel):
 
 @app.post("/repos/{repo_id}/processes/{process_id}")
 def change_process_state(repo_id: str, process_id: str, action: Action):
-    if action.action == 'kill':
-        killed = util.kill(config.repos, repo_id, process_id)
-        if not killed:
-            return Response(content='Process was not running', media_type="text/plain", status_code=404)
-    elif action.action == 'restart':
-        util.restart(config.repos, repo_id, process_id)
-        time.sleep(1)
-    else:
-        assert False, 'Invalid action ' + action.action
+    assert action.action in {'kill', 'restart'}
+    repo, proc = util.get_by_id(config.repos, repo_id, process_id)
+    proc.keep_running = (action.action == 'restart')
+    util.sync_process(proc, repo.directory)
+    time.sleep(1)
 
     return dict(repo_id=repo_id, process_id=process_id, action=action.action)
 
@@ -66,6 +102,16 @@ def get_process_log(repo_id: str, process_id: str, log_type: str) -> Response:
         return Response(content=''.join(lines), media_type="text/plain")
     else:
         return Response(content='Not Found', media_type="text/plain", status_code=404)
+
+
+@app.get("/logs")
+def get_logs(created: float) -> Response:
+    diff = []
+    for item in reversed(handler.buffer):
+        diff.append(item)
+        if item[0] == created:
+            break
+    return diff
 
 
 parser = argparse.ArgumentParser()
@@ -82,6 +128,6 @@ for repo in app_config['repos']:
 
 # repo_dirs = [(app_config_path.parent / repo).resolve() for repo in app_config['repos']]
 config = Config(appName=app_config['appName'], repos=util.collect_repos(app_config['repos']))
-util.auto_run_processes(config.repos)
+
 
 uvicorn.run(app, host=args.host, port=args.port)

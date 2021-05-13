@@ -50,7 +50,7 @@
         <th>Git Ref</th>
         <th>Process Name</th>
         <th>Start Time</th>
-        <th>Action</th>
+        <th>Keep Alive</th>
         <th>Logs</th>
     </tr>
     </thead>
@@ -65,9 +65,7 @@
         <td>Process Name</td>
         <td>Start Time</td>
         <td>
-            <label style="display: inline-block"><input type="radio" name="status" value="start">Start</label>
-            <label style="display: inline-block"><input type="radio" name="status" value="transition" disabled>Provisioning</label>
-            <label style="display: inline-block"><input type="radio" name="status" value="stop">Stop</label>
+            <label style="display: inline-block"><input type="checkbox" name="KeepAlive"></label>
         </td>
         <td>
             <a href="" target="">out</a>
@@ -77,24 +75,8 @@
     </tr>
 </template>
 
-<!--
-<fieldset>
-    <legend>Git Actions</legend>
-    <form>
-        <div>
-            <button id="checkout" type="button">checkout</button>
-            <code id="repoName"></code> current tag is <code id="gitRef"></code>
-        </div>
-        <div class="grid-container">
-            <div>
-                <label for="gitRefs"></label>
-                <select id="gitRefs" size=40></select>
-            </div>
-            <pre id="gitMessage" style="margin-top:0; background-color: azure;"></pre>
-        </div>
-    </form>
-</fieldset>
--->
+<pre id="logs">
+</pre>
 
 </body>
 <script type="module">
@@ -102,7 +84,6 @@
     let repos;
     /** @type{Object.<string, jenky.Repo>} */
     let reposByName ={};
-    const gitMessageElem = document.getElementById('gitMessage');
 
     class ConcernedFaceIterator {
         constructor() {
@@ -167,24 +148,12 @@
                 td.textContent = proc.createTime ? new Date(proc.createTime * 1000).toISOString() : '';
 
                 td = td.nextElementSibling;   // Status
-                let transition;
-                for (const input of td.querySelectorAll('input')) {
-                    input.name = proc.name + '_status';
-                    if (input.value === 'start') input.checked = proc.running;
-                    else if (input.value === 'stop') input.checked = !proc.running;
-                    else transition = input;
-                    input.addEventListener('change', (evt) => {
-                        const targetValue = evt.target.value;
-                        transition.checked = true;
-                        if (targetValue === 'stop') {
-                            kill(evt, repo, proc);
-                        } else if (targetValue === 'start') {
-                            restart(evt, repo, proc);
-                        } else {
-                            console.assert(false)
-                        }
-                    });
-                }
+                const input = td.querySelector('input');
+                input.checked = proc.keepRunning;
+                input.addEventListener('change', (evt) => {
+                    // evt.target.disabled = true;
+                    changeProcessState(repo, proc, input.checked?'restart':'kill');
+                });
 
                 td = td.nextElementSibling;
                 let a = td.firstElementChild;
@@ -201,37 +170,6 @@
     }
 
     /**
-     * @param {string} repoName
-     */
-    function renderRepo(repoName) {
-        /** @type{HTMLSelectElement} */
-        const select = /** @type{HTMLSelectElement} */ document.getElementById('gitRefs');
-        /** @type{jenky.Repo} */
-        const repo = reposByName[repoName];
-        select.oninput = evt => console.log(evt);
-        //document.getElementById('fetch').onclick = () => fetchRepo(repoName);
-        document.getElementById('checkout').onclick = () => {
-            if (!select.value) {
-                gitMessageElem.textContent = concernedFaceIterator.next() + 'Please select tag or branch';
-            } else {
-                gitCheckout(repo, select.value);
-            }
-        };
-
-        document.getElementById('repoName').textContent = repoName;
-        document.getElementById('gitRef').textContent = repo.gitRef;
-        gitMessageElem.textContent = repo.gitMessage;
-
-        select.textContent = '';
-        for (const ref of repo.gitRefs) {
-            const option = document.createElement('option');
-            option.textContent = ref.creatorDate + ' ' + ref.refName;
-            option.value = ref.refName;
-            select.appendChild(option);
-        }
-    }
-
-    /**
      * @param {jenky.Repo[]} data
      */
     function setRepos(data) {
@@ -240,59 +178,6 @@
         for (const repo of repos) {
             reposByName[repo.repoName] = repo;
         }
-    }
-
-    /**
-     * @param {Event} evt
-     * @param {jenky.Repo} repo
-     * @param {jenky.Process} proc
-     */
-    function kill(evt, repo, proc) {
-        evt.target.disabled = true;
-        changeProcessState(repo, proc, 'kill');
-    }
-
-    /**
-     * @param {Event} evt
-     * @param {jenky.Repo} repo
-     * @param {jenky.Process} proc
-     */
-    function restart(evt, repo, proc) {
-        evt.target.disabled = true;
-        changeProcessState(repo, proc, 'restart');
-    }
-
-    /**
-     * @param {jenky.Repo} repo
-     * @param {string} gitRef
-     */
-    function gitCheckout(repo, gitRef) {
-        const payload = {action: 'checkout', gitRef: gitRef};
-
-        gitMessageElem.textContent = 'Loading...';
-        fetch(`/repos/${repo.repoName}`, {method: 'post', body: JSON.stringify(payload)})
-            .then(response => {
-                if (response.status === 200) {
-                    return response.json();
-                } else {
-                    gitMessageElem.textContent = concernedFaceIterator.next() + response.statusText + ' ' + response.url;
-                }
-            })
-            .then(data => {
-                gitMessageElem.textContent = data['message'];
-                repo.gitRef = gitRef;
-            })
-    }
-
-    function fetchRepo(repoName) {
-        return fetch(`/repos/${repoName}`)
-            .then(response => {
-                if (response.status === 200) {
-                    return response.json();
-                } else {
-                    gitMessageElem.textContent = concernedFaceIterator.next() + response.statusText;
-                }
-            })
     }
 
     /**
@@ -315,8 +200,8 @@
             .then(fetchRepos)
     }
 
-
     function fetchRepos() {
+        fetchLogs()
         fetch('/repos')
             .then(response => response.json())
             .then(data => {
@@ -326,6 +211,23 @@
             })
     }
 
+    let logs = [];
+    function fetchLogs() {
+        const params = new URLSearchParams();
+        let created = 0.0;
+        if (logs.length) {
+            created = logs[0][0];
+        }
+        params.append('created', String(created));
+        fetch('/logs?' + params.toString())
+            .then(response => response.json())
+            .then(newLogs => {
+                logs = newLogs.concat(logs);
+                document.getElementById('logs').textContent = JSON.stringify(logs.map(item => item[1]), null, 4);
+            })
+    }
+
     fetchRepos()
+
 </script>
 </html>

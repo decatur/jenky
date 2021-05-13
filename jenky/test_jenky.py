@@ -12,7 +12,6 @@ config = [
         "processes": [
             {
                 "name": "jenky",
-                "running": None,
                 "cmdPattern": {
                     "index": 1,
                     "pattern": "test_jenky"
@@ -72,7 +71,7 @@ def test_git_tags():
 
 def test_run():
     cwd = Path('.').absolute()
-    util.run(cwd, ['bash', 'p.sh'])
+    util.start_process(cwd, ['bash', 'p.sh'])
     time.sleep(1)
     util.dump_processes([cwd])
 

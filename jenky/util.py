@@ -22,8 +22,8 @@ class Process(BaseModel):
     name: str
     cmd: List[str]
     env: dict
-    running: bool
-    create_time: float = Field(..., alias='createTime')
+    keep_running: bool = Field(..., alias='keepRunning')
+    create_time: Optional[float] = Field(..., alias='createTime')
     service_sub_domain: Optional[str] = Field(alias='serviceSubDomain')
     service_home_path: Optional[str] = Field(alias='serviceHomePath')
 
@@ -43,19 +43,21 @@ class Config(BaseModel):
     repos: List[Repo]
 
 
-def running_process(proc: Process, directory: Path) -> Optional[psutil.Process]:
-    pid_file = directory / (proc.name + '.pid')
+def find_process_by_name(name: str, pid_file: Path) -> Optional[psutil.Process]:
     logger.debug(f'Reading {pid_file}')
 
     if not pid_file.exists():
-        logger.debug(f'Skipping {pid_file}')
+        logger.debug(f'No such file: {pid_file}')
         return None
 
     try:
-        pid = int(pid_file.read_text())
+        p_info = json.loads(pid_file.read_text())
     except Exception as e:
         logger.exception(f'Reading pid file {pid_file}')
         raise e
+
+    pid = p_info['pid']
+    assert isinstance(pid, int)
 
     try:
         p = psutil.Process(pid)
@@ -73,32 +75,60 @@ def running_process(proc: Process, directory: Path) -> Optional[psutil.Process]:
         return None
 
     try:
-        # pprint(p.environ())
-        if p.environ().get('JENKY_NAME', '') == proc.name:
+        if abs(p.create_time() - p_info['create_time']) < 1:
             return p
+        # pprint(p.environ())
+        # if p.environ().get('JENKY_NAME', '') == proc.name:
+        #    return p
     except psutil.AccessDenied:
         pass
 
-    return None
+
+def sync_process(proc: Process, directory: Path):
+    pid_file = directory / (proc.name + '.json')
+    p = find_process_by_name(proc.name, pid_file)
+
+    diff = 'In sync'
+
+    if proc.keep_running and p:
+        pass
+    elif not proc.keep_running and not p:
+        pass
+    elif not proc.keep_running and p:
+        diff = 'Reaping process'
+        p.terminate()
+        # We need to wait unless a zombie stays in process list!
+        gone, alive = psutil.wait_procs([p], timeout=3, callback=None)
+        for process in alive:
+            process.kill()
+        p = None
+    elif proc.keep_running and not p:
+        diff = 'Restarting process'
+        p = start_process(proc.name, directory, proc.cmd, proc.env)
+        if p:
+            pid_file.write_text(json.dumps(dict(pid=p.pid, create_time=p.create_time())))
+
+    logger.info(diff)
+
+    if p:
+        proc.create_time = p.create_time()
+    else:
+        proc.create_time = None
+        pid_file.unlink(missing_ok=True)
 
 
-def running_processes(repos: List[Repo]):
+def sync_processes(repos: List[Repo]):
     for repo in repos:
         for proc in repo.processes:
-            p = running_process(proc, repo.directory)
-            if p:
-                proc.running = True
-                proc.create_time = p.create_time()
-            else:
-                proc.running = False
-                proc.create_time = None
+            sync_process(proc, repo.directory)
 
 
-def run(name: str, cwd: Path, cmd: List[str], env: dict):
+def start_process(name: str, cwd: Path, cmd: List[str], env: dict) -> Optional[psutil.Process]:
     # TODO: On systemd, use it and replace jenky_config with service unit file.
     my_env = os.environ.copy()
     my_env.update(env)
-    my_env['JENKY_NAME'] = name
+    # TODO: Use tuple (PID, START_TIME) to id a process.
+    # my_env['JENKY_NAME'] = name
 
     if cmd[0] == 'python':
         executable = 'python'
@@ -147,10 +177,23 @@ def run(name: str, cwd: Path, cmd: List[str], env: dict):
         env=my_env,
         **kwargs)
 
-    pid_file = cwd / (name + '.pid')
-    pid_file.write_text(str(popen.pid))
 
-    del popen  # Voodoo
+    try:
+        p = psutil.Process(popen.pid)
+    except psutil.NoSuchProcess:
+        logger.warning(f'No such proccess {popen.pid}')
+        return
+
+    is_running = p.is_running()
+    if not is_running:
+        return
+    elif is_running and p.status() == psutil.STATUS_ZOMBIE:
+        # This happens whenever the process terminated but its creator did not because we do not wait.
+        # p.terminate()
+        p.wait()
+        return
+
+    return p
 
 
 def get_by_id(repos: List[Repo], repo_id: str, process_id: str) -> Tuple[Repo, Process]:
@@ -161,33 +204,11 @@ def get_by_id(repos: List[Repo], repo_id: str, process_id: str) -> Tuple[Repo, P
     return repo, procs[0]
 
 
-def kill(repos: List[Repo], repo_id: str, process_id: str) -> bool:
-    repo, proc = get_by_id(repos, repo_id, process_id)
-    p = running_process(proc, repo.directory)
-    if p:
-        p.terminate()
-        # We need to wait unless a zombie stays in process list!
-        gone, alive = psutil.wait_procs([p], timeout=3, callback=None)
-        for process in alive:
-            process.kill()
-
-        return True
-    return False
-
-
 def repo_by_id(repos: List[Repo], repo_id: str) -> Repo:
     repos = [repo for repo in repos if repo.repoName == repo_id]
     if not repos:
         raise ValueError(repo_id)
     return repos[0]
-
-
-def restart(repos: List[Repo], repo_id: str, process_id: str):
-    # TODO: Rename to start, implement restart=kill+start
-    repo, proc = get_by_id(repos, repo_id, process_id)
-    p = running_process(proc, repo.directory)
-    assert p is None
-    run(proc.name, repo.directory, proc.cmd, proc.env)
 
 
 def get_tail(path: Path) -> List[str]:
@@ -225,10 +246,10 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
         logger.info(f'Collect repo {repo_dir}')
         config = repo_info.get('config', dict())
         if not config:
+            assert False, 'Deprecated: jenky_config.json'
             config_file = repo_dir / 'jenky_config.json'
             if is_file(config_file):
                 logger.info(f'Collecting {repo_dir}')
-
                 config = json.loads(config_file.read_text(encoding='utf8'))
 
         if config:
@@ -240,25 +261,13 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
             if (repo_dir / '.git').is_dir():
                 config["gitRef"] = str(git_ref(repo_dir / '.git'))
 
-            if not config["gitRef"]:
+            if not config.get("gitRef", ""):
                 config["gitRef"] = 'No git ref found'
             # data["gitRefs"] = []
             # data["gitMessage"] = ""
 
             repos.append(Repo.parse_obj(config))
     return repos
-
-
-def auto_run_processes(repos: List[Repo]):
-    for repo in repos:
-        for proc in repo.processes:
-            if proc.running:
-                p = running_process(proc, repo.directory)
-                if not p:
-                    logger.info(f'Auto-running {repo.repoName}.{proc.name}')
-                    run(proc.name, repo.directory, proc.cmd, proc.env)
-                    continue
-            logger.info(f'Not Auto-running {repo.repoName}.{proc.name}')
 
 
 def git_named_refs(git_hash: str, git_dir: Path) -> Set[str]:
