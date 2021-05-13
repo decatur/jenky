@@ -124,11 +124,13 @@ def get_logs(last_event_id: str = None) -> dict:
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--host', type=str, help='host', default="127.0.0.1")
-parser.add_argument('--port', type=int, help='port', default=8000)
-parser.add_argument('--app-config', type=str, help='jenky_app_config', default="jenky_app_config.json")
-parser.add_argument('--log-level', type=str, help='log level', default="INFO")
-parser.add_argument('--cache-dir', type=str, help='cache dir', default=".jenky_cache")
+parser.add_argument('--host', type=str, help='Server host', default="127.0.0.1")
+parser.add_argument('--port', type=int, help='Server port', default=8000)
+parser.add_argument('--app-config', type=str,
+                    help='Path to JSON app configuration. This argument is env-var interpolated.',
+                    default="jenky_app_config.json")
+parser.add_argument('--log-level', type=str, help='Log level', default="INFO")
+parser.add_argument('--cache-dir', type=str, help='Path to cache dir', default=".jenky_cache")
 args = parser.parse_args()
 
 logger.info(args)
@@ -140,7 +142,7 @@ util.cache_dir = Path(args.cache_dir)
 assert util.cache_dir.is_dir()
 app_config = json.loads(app_config_path.read_text(encoding='utf8'))
 for repo in app_config['repos']:
-    repo['path'] = (app_config_path.parent / repo['path']).resolve()
+    repo['directory'] = (app_config_path.parent / repo['directory']).resolve()
 
 config = Config(appName=app_config['appName'], repos=util.collect_repos(app_config['repos']))
 

@@ -239,24 +239,20 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
     repos: List[Repo] = []
 
     for repo_info in repo_infos:
-        repo_dir = repo_info['path']
+        repo_dir = repo_info['directory']
         logger.info(f'Collect repo {repo_dir}')
-        config = repo_info.get('config', dict())
-        if not config:
-            continue
-
-        if 'directory' in config:
-            config['directory'] = (repo_dir / config['directory']).resolve()
-        else:
-            config['directory'] = repo_dir
+        #if 'directory' in repo_info:
+        #    repo_info['directory'] = (repo_dir / config['directory']).resolve()
+        #else:
+        #repo_info['directory'] = repo_dir
 
         if (repo_dir / '.git').is_dir():
-            config["gitRef"] = str(git_ref(repo_dir / '.git'))
+            repo_info["gitRef"] = str(git_ref(repo_dir / '.git'))
 
-        if not config.get("gitRef", ""):
-            config["gitRef"] = 'No git ref found'
+        if not repo_info.get("gitRef", ""):
+            repo_info["gitRef"] = 'No git ref found'
 
-        repos.append(Repo.parse_obj(config))
+        repos.append(Repo.parse_obj(repo_info))
     return repos
 
 

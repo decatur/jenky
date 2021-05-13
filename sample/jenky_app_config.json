@@ -2,24 +2,21 @@
   "appName": "Jenky 0.0.2, the gentle deploying app for Python",
   "repos": [
     {
-      "path": "../",
-      "config": {
-        "repoName": "jenky",
-        "remoteUrl": "https://github.com/decatur/jenky",
-        "processes": [
-          {
-            "name": "sample_1",
-            "cmd": [
-              "python",
-              "sample/sample_1.py"
-            ],
-            "env": {},
-            "keepRunning": true,
-            "createTime": 0
-          }
-        ]
-      }
+      "directory": "../",
+      "repoName": "jenky",
+      "remoteUrl": "https://github.com/decatur/jenky",
+      "processes": [
+        {
+          "name": "sample_1",
+          "cmd": [
+            "python",
+            "sample/sample_1.py"
+          ],
+          "env": {},
+          "keepRunning": true,
+          "createTime": 0
+        }
+      ]
     }
-  ],
-  "gitCmd": "C:/ws/tools/PortableGit/bin/git.exe"
+  ]
 }

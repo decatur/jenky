@@ -22,12 +22,28 @@ pip install -r requirements.txt
 
 # Start jenky server
 
-Run Jenky from package.
+````bash
+venv/Scripts/python -m jenky -h
+usage: __main__.py [-h] [--host HOST] [--port PORT] [--app-config APP_CONFIG]
+                   [--log-level LOG_LEVEL] [--cache-dir CACHE_DIR]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --host HOST           Server host
+  --port PORT           Server port
+  --app-config APP_CONFIG
+                        Path to JSON app configuration. This argument is env-
+                        var interpolated.
+  --log-level LOG_LEVEL
+                        Log level
+  --cache-dir CACHE_DIR
+                        Path to cache dir
+````
 
 ````shell script
 python -m jenky
 # or with explicit default values
-python -m jenky --app_config=jenky_app_config.json --host=127.0.0.1 --port=8000
+python -m jenky --app-config=jenky_app_config.json --host=127.0.0.1 --port=8000 --log-level=DEBUG --cache-dir=./jenky
 ````
 
 # Docker
@@ -38,24 +54,12 @@ Jenky may be your alternative to
 In that case, use
 ````shell script
 EXPOSE 5000
-CMD ["python", "-m", "jenky",  "--app_config=jenky_app_config.json", "--port=5000", "--host=0.0.0.0"]
+CMD ["python", "-m", "jenky",  "--app_config={stage}/jenky_app_config.json", "--port=5000", "--host=0.0.0.0"]
 ````
 
 # Configure Jenky
 
-A Jenky instance is customized via the `--app_config` command line option. You specify a JSON document with the fiels
-* appName: The branding of the Jenky instance, as shown in the title of the UI.
-* reposBase: Path to a folder. All sub-folders containing a `jenky_config.json` are considered repositories.
-* gitCmd: The command to execute git on the target server.
-
-Example `jenky_app_config.json` document:
-````
-{
-  "appName": "Jenky 0.0.2, the gentle deploying app for Python",
-  "reposBase": "../",
-  "gitCmd": "C:/ws/tools/PortableGit/bin/git.exe"
-}
-````
+A Jenky instance is customized via the `--app-config` command line option, see [sample config](sample/jenky_app_config.json).
 
 # Configure Repository
 
@@ -68,27 +72,7 @@ the repository:
   * cmd: The command to run the process; Currently this must be a python command, see below.
   * env: Additional environment
   * running: Shall the process be auto-restarted when starting Jenky
-  * createTime: Set this to 0
 
-Example `jenky_config.json` file:
-````
-{
-  "repoName": "jenky",
-  "remoteUrl": "https://github.com/decatur/jenky",
-  "processes": [
-    {
-      "name": "sample",
-      "cmd": [
-        "python",
-        "scripts/sample.py"
-      ],
-      "env": {},
-      "running": true,
-      "createTime": 0
-    }
-  ]
-}
-````
 
 ## Python Runtime Resolution
 
@@ -114,6 +98,10 @@ python -m twine upload dist/*
 ````
 
 # Releases
+
+## 0.2.4
+
+* Keep processes running
 
 ## 0.2.3
 
