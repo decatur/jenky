@@ -103,7 +103,7 @@ def sync_process(proc: Process, directory: Path):
         p = None
     elif proc.keep_running and not p:
         logger.warning(f'Restarting process {proc.name}')
-        p = start_process(proc.name, cache_dir, proc.cmd, proc.env)
+        p = start_process(proc.name, directory, proc.cmd, proc.env)
         if p:
             pid_file.write_text(json.dumps(dict(pid=p.pid, create_time=p.create_time())))
 
@@ -121,6 +121,9 @@ def sync_processes(repos: List[Repo]):
 
 
 def start_process(name: str, cwd: Path, cmd: List[str], env: dict) -> Optional[psutil.Process]:
+    current_working_directory = cwd.absolute().as_posix()
+    logger.info(f'Start process in {current_working_directory}')
+
     # TODO: On systemd, use it and replace jenky_config with service unit file.
     my_env = os.environ.copy()
     my_env.update(env)
@@ -170,7 +173,7 @@ def start_process(name: str, cwd: Path, cmd: List[str], env: dict) -> Optional[p
         stdin=subprocess.DEVNULL,  # TODO: We do not actually need this, even if subprocess reads from stdin.
         stdout=stdout,
         stderr=subprocess.STDOUT,
-        cwd=cwd.absolute().as_posix(),
+        cwd=current_working_directory,
         env=my_env,
         **kwargs)
 
