@@ -4,6 +4,7 @@ import collections
 import json
 import logging.handlers
 import os
+import signal
 import sys
 import time
 from pathlib import Path
@@ -66,6 +67,10 @@ def sync_processes_action() -> float:
 
 @app.on_event("startup")
 async def startup_event():
+    # loop = asyncio.get_running_loop()
+    # for sig in (signal.SIGTERM, signal.SIGINT):  # signal.SIGHUP,
+    #     loop.add_signal_handler(
+    #         sig, lambda s: print(s))
     asyncio.create_task(schedule(sync_processes_action, time.time() + 5))
 
 

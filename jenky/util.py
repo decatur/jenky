@@ -24,7 +24,7 @@ class Process(BaseModel):
     cmd: List[str]
     env: dict
     keep_running: bool = Field(..., alias='keepRunning')
-    create_time: Optional[float] = Field(..., alias='createTime')
+    create_time: Optional[float] = Field(alias='createTime')
     service_sub_domain: Optional[str] = Field(alias='serviceSubDomain')
     service_home_path: Optional[str] = Field(alias='serviceHomePath')
 

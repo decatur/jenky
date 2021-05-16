@@ -85,6 +85,11 @@ environment.
 * [Deployment - Full Stack Python](https://www.fullstackpython.com/deployment.html)
 * [How to run systemd in a container](https://developers.redhat.com/blog/2019/04/24/how-to-run-systemd-in-a-container/)
 
+# Best Practice for Processes
+
+TODO: Termination, see https://www.roguelynn.com/words/asyncio-graceful-shutdowns/
+TODO: Logging
+
 # Package and Publish
 
 ````shell script
