@@ -86,6 +86,7 @@ def find_process_by_name(name: str, pid_file: Path) -> Optional[psutil.Process]:
 
 
 def sync_process(proc: Process, directory: Path):
+    proc_logger = logging.getLogger(proc.name)
     pid_file = cache_dir / (proc.name + '.json')
     p = find_process_by_name(proc.name, pid_file)
 
@@ -94,7 +95,7 @@ def sync_process(proc: Process, directory: Path):
     elif not proc.keep_running and not p:
         pass
     elif not proc.keep_running and p:
-        logger.warning(f'Reaping process {proc.name}')
+        proc_logger.warning(f'Reaping process {proc.name}')
         p.terminate()
         # We need to wait unless a zombie stays in process list!
         gone, alive = psutil.wait_procs([p], timeout=3, callback=None)
@@ -102,7 +103,7 @@ def sync_process(proc: Process, directory: Path):
             process.kill()
         p = None
     elif proc.keep_running and not p:
-        logger.warning(f'Restarting process {proc.name}')
+        proc_logger.warning(f'Restarting process {proc.name}')
         p = start_process(proc.name, directory, proc.cmd, proc.env)
         if p:
             pid_file.write_text(json.dumps(dict(pid=p.pid, create_time=p.create_time())))
@@ -121,8 +122,9 @@ def sync_processes(repos: List[Repo]):
 
 
 def start_process(name: str, cwd: Path, cmd: List[str], env: dict) -> Optional[psutil.Process]:
+    proc_logger = logging.getLogger(name)
     current_working_directory = cwd.absolute().as_posix()
-    logger.info(f'Start process in {current_working_directory}')
+    proc_logger.info(f'Start process in {current_working_directory}')
 
     # TODO: On systemd, use it and replace jenky_config with service unit file.
     my_env = os.environ.copy()
@@ -155,8 +157,8 @@ def start_process(name: str, cwd: Path, cmd: List[str], env: dict) -> Optional[p
 
         cmd = [executable] + cmd[1:]
 
-    logger.debug(f'Running: {" ".join(cmd)}')
-    logger.info(f'PYTHONPATH: {my_env.get("PYTHONPATH", "")}')
+    proc_logger.debug(f'Running: {" ".join(cmd)}')
+    proc_logger.debug(f'PYTHONPATH: {my_env.get("PYTHONPATH", "")}')
 
     out_file = cwd / f'{name}.out'
     out_file.unlink(missing_ok=True)
@@ -181,7 +183,7 @@ def start_process(name: str, cwd: Path, cmd: List[str], env: dict) -> Optional[p
     try:
         p = psutil.Process(popen.pid)
     except psutil.NoSuchProcess:
-        logger.warning(f'No such proccess {popen.pid}')
+        proc_logger.warning(f'No such proccess {popen.pid}')
         return
 
     is_running = p.is_running()
