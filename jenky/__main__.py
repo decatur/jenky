@@ -4,7 +4,6 @@ import collections
 import json
 import logging.handlers
 import os
-import signal
 import sys
 import time
 from pathlib import Path
@@ -17,7 +16,7 @@ from pydantic import BaseModel
 from starlette.responses import RedirectResponse, Response
 
 from jenky import util
-from jenky.util import Config, get_tail
+from jenky.util import Config, get_tail, git_ref
 
 
 class ListHandler(logging.StreamHandler):
@@ -98,7 +97,7 @@ class Action(BaseModel):
 @app.post("/repos/{repo_id}/processes/{process_id}")
 def change_process_state(repo_id: str, process_id: str, action: Action):
     assert action.action in {'kill', 'restart'}
-    repo, proc = util.get_by_id(config.repos, repo_id, process_id)
+    _, proc = util.get_by_id(config.repos, repo_id, process_id)
     proc.keep_running = (action.action == 'restart')
     # util.sync_process(proc, repo.directory)
     time.sleep(1)
@@ -149,6 +148,7 @@ app_config = json.loads(app_config_path.read_text(encoding='utf8'))
 for repo in app_config['repos']:
     repo['directory'] = (app_config_path.parent / repo['directory']).resolve()
 
-config = Config(appName=app_config['appName'], repos=util.collect_repos(app_config['repos']))
+jenky_version = ','.join(git_ref(Path('./.git'))) if Path('./.git').is_dir() else ''
+config = Config(appName=app_config['appName'], version=jenky_version, repos=util.collect_repos(app_config['repos']))
 
 uvicorn.run(app, host=args.host, port=args.port)

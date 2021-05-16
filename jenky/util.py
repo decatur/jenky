@@ -41,6 +41,7 @@ class Repo(BaseModel):
 
 class Config(BaseModel):
     app_name: str = Field(..., alias='appName')
+    version: str
     repos: List[Repo]
 
 
@@ -98,6 +99,7 @@ def sync_process(proc: Process, directory: Path):
         proc_logger.warning(f'Reaping process {proc.name}')
         p.terminate()
         # We need to wait unless a zombie stays in process list!
+        # TODO: We should do this async.
         gone, alive = psutil.wait_procs([p], timeout=3, callback=None)
         for process in alive:
             process.kill()
@@ -282,6 +284,7 @@ def git_ref(git_dir: Path) -> Set[str]:
     This method does not need nor uses a git client installation.
     """
 
+    logger.info(f'Scanning {git_dir.absolute()}')
     head = (git_dir / 'HEAD').read_text(encoding='ascii').strip()
     if head.startswith('ref:'):
         # This is a branch, example "ref: refs/heads/master"

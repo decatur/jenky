@@ -30,13 +30,6 @@
             margin-top: 1em;
         }
 
-        .grid-container {
-            margin-top: 1ex;
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 0 1em;
-        }
-
     </style>
 </head>
 <body>
@@ -80,10 +73,6 @@
 
 </body>
 <script type="module">
-    /** @type{jenky.Repo[]} */
-    let repos;
-    /** @type{Object.<string, jenky.Repo>} */
-    let reposByName = {};
 
     class ConcernedFaceIterator {
         constructor() {
@@ -101,14 +90,15 @@
     const concernedFaceIterator = new ConcernedFaceIterator();
 
     /**
+     * @param {Object.<string, jenky.Repo>} repos
      */
-    function renderRepos() {
+    function renderRepos(repos) {
         const tbody = document.getElementById('repos');
         tbody.textContent = '';
         const template = document.getElementById('processRow');
         for (const repo of repos) {
             const name = repo.repoName;
-            for (const [index, proc] of repo.processes.entries()) {
+            for (const proc of repo.processes) {
                 let tr = template.content.firstElementChild.cloneNode(true);
                 let td = tr.firstElementChild;
                 if (repo.remoteUrl) {
@@ -122,14 +112,7 @@
                 }
 
                 td = td.nextElementSibling;
-                td.textContent = repo.gitRef; //firstElementChild.value = repo.repoName;
-                // td.firstElementChild.addEventListener('change', () => {
-                //     fetchRepo(name)
-                //         .then(repo => {
-                //             reposByName[name] = repo;
-                //             renderRepo(name);
-                //         })
-                // });
+                td.textContent = repo.gitRef;
 
                 td = td.nextElementSibling;
                 if (proc.serviceSubDomain) {
@@ -170,17 +153,6 @@
     }
 
     /**
-     * @param {jenky.Repo[]} data
-     */
-    function setRepos(data) {
-        repos = data;
-        reposByName = {};
-        for (const repo of repos) {
-            reposByName[repo.repoName] = repo;
-        }
-    }
-
-    /**
      * @param {jenky.Repo} repo
      * @param {jenky.Process} proc
      * @param {string} action
@@ -208,9 +180,8 @@
         fetch('/repos')
             .then(response => response.json())
             .then(data => {
-                document.getElementById('appName').textContent = data['appName'];
-                setRepos(data['repos']);
-                renderRepos();
+                document.getElementById('appName').textContent = `${data['appName']} (${data['version']})`;
+                renderRepos(data['repos']);
             })
     }
 
