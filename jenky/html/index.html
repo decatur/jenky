@@ -23,7 +23,7 @@
         }
 
         tbody tr:hover {
-          background-color: #ffff99;
+            background-color: #ffff99;
         }
 
         fieldset {
@@ -83,7 +83,7 @@
     /** @type{jenky.Repo[]} */
     let repos;
     /** @type{Object.<string, jenky.Repo>} */
-    let reposByName ={};
+    let reposByName = {};
 
     class ConcernedFaceIterator {
         constructor() {
@@ -123,13 +123,13 @@
 
                 td = td.nextElementSibling;
                 td.textContent = repo.gitRef; //firstElementChild.value = repo.repoName;
-                    // td.firstElementChild.addEventListener('change', () => {
-                    //     fetchRepo(name)
-                    //         .then(repo => {
-                    //             reposByName[name] = repo;
-                    //             renderRepo(name);
-                    //         })
-                    // });
+                // td.firstElementChild.addEventListener('change', () => {
+                //     fetchRepo(name)
+                //         .then(repo => {
+                //             reposByName[name] = repo;
+                //             renderRepo(name);
+                //         })
+                // });
 
                 td = td.nextElementSibling;
                 if (proc.serviceSubDomain) {
@@ -152,7 +152,7 @@
                 input.checked = proc.keepRunning;
                 input.addEventListener('change', (evt) => {
                     // evt.target.disabled = true;
-                    changeProcessState(repo, proc, input.checked?'restart':'kill');
+                    changeProcessState(repo, proc, input.checked ? 'restart' : 'kill');
                 });
 
                 td = td.nextElementSibling;
@@ -198,6 +198,9 @@
             })
             .then(data => console.log(data))
             .then(fetchLogs)
+        window.setTimeout(() => {
+            fetchLogs()
+        }, 6000)
     }
 
     function fetchRepos() {
@@ -212,6 +215,7 @@
     }
 
     let logs = [];
+
     function fetchLogs() {
         const params = new URLSearchParams();
         if (logs.length) {
@@ -220,8 +224,13 @@
         fetch('/logs?' + params.toString())
             .then(response => response.json())
             .then(data => {
-                logs = data['logsSince'].concat(logs).slice(0, data['maxLength']);
-                document.getElementById('logs').textContent = JSON.stringify(logs.map(item => item[1]), null, 4);
+                if (data['logsSince']) {
+                    logs = data['logsSince'].concat(logs).slice(0, data['maxLength']);
+                    document.getElementById('logs').textContent = JSON.stringify(logs.map(item => item[1]), null, 4);
+                    window.setTimeout(() => {
+                        fetchLogs()
+                    }, 6000)
+                }
             })
     }
 
