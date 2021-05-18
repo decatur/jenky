@@ -196,6 +196,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data['logsSince']) {
+                    // TODO: Also send updated git tags
                     logs = data['logsSince'].concat(logs).slice(0, data['maxLength']);
                     document.getElementById('logs').textContent = JSON.stringify(logs.map(item => item[1]), null, 4);
                     window.setTimeout(() => {

@@ -45,11 +45,14 @@ repos_by_process_id: Dict[str, Process] = {}
 class Repo(BaseModel):
     repoName: str
     directory: Path
-    git_tag: str = Field(..., alias='gitRef')
+    git_tag: str = Field(default='', alias='gitRef')
     # git_refs: List[dict] = Field(..., alias='gitRefs')
     # git_message: str = Field(..., alias='gitMessage')
     processes: List[Process]
     remote_url: Optional[str] = Field(alias='remoteUrl')
+
+    def refresh(self):
+        self.git_tag = ','.join(git_ref(self.directory / '.git'))
 
 
 class Config(BaseModel):
@@ -147,6 +150,7 @@ def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
     my_env = os.environ.copy()
     my_env.update(proc.env)
 
+    proc.repo.refresh()
     my_env['JENKY_APP_VERSION'] = proc.repo.git_tag
     my_env['JENKY_LOG_FILE'] = (cache_dir / f'{proc.name}.log').absolute().as_posix()
 
@@ -271,13 +275,10 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
         #else:
         #repo_info['directory'] = repo_dir
 
-        if (repo_dir / '.git').is_dir():
-            repo_info["gitRef"] = ','.join(git_ref(repo_dir / '.git'))
-
-        if not repo_info.get("gitRef", ""):
-            repo_info["gitRef"] = 'No git ref found'
+        # repo_info["gitRef"] = repo_info.get("gitRef", "")
 
         repo = Repo.parse_obj(repo_info)
+        repo.refresh()
         repos.append(repo)
         for proc in repo.processes:
             # repos_by_process_id[id(proc)] = repo

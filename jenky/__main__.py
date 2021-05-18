@@ -124,7 +124,7 @@ def get_logs(last_event_id: str = None) -> dict:
             break
         logs_since.append(item)
 
-    return dict(logsSince=logs_since, maxLength=list_handler.buffer.maxlen)
+    return dict(logsSince=logs_since, maxLength=list_handler.buffer.maxlen, repos=config.repos)
 
 
 parser = argparse.ArgumentParser()
