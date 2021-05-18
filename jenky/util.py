@@ -146,9 +146,7 @@ def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
     # TODO: On systemd, use it and replace jenky_config with service unit file.
     my_env = os.environ.copy()
     my_env.update(proc.env)
-    # TODO: Use tuple (PID, START_TIME) to id a process.
-    # my_env['JENKY_NAME'] = name
-    repo = repos_by_process_id[id(proc)]
+
     my_env['JENKY_APP_VERSION'] = proc.repo.git_tag
     my_env['JENKY_LOG_FILE'] = (cache_dir / f'{proc.name}.log').absolute().as_posix()
 
