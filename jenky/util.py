@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple, Optional, Set
+from typing import List, Tuple, Optional, Set, Dict
 import subprocess
 
 import psutil
@@ -27,10 +27,19 @@ class Process(BaseModel):
     create_time: Optional[float] = Field(alias='createTime')
     service_sub_domain: Optional[str] = Field(alias='serviceSubDomain')
     service_home_path: Optional[str] = Field(alias='serviceHomePath')
-    repo: Optional['Repo'] = None
+    # repo: Optional['Repo'] = None
+
+    @property
+    def repo(self) -> 'Repo':
+        return repos_by_process_id[id(self)]
+
+    # Note: pydantic does not support property setter, AFAIK
+    # @repo.setter
+    def set_repo(self, _repo: 'Repo'):
+        repos_by_process_id[id(self)] = _repo
 
 
-
+repos_by_process_id: Dict[str, Process] = {}
 
 
 class Repo(BaseModel):
@@ -42,8 +51,6 @@ class Repo(BaseModel):
     processes: List[Process]
     remote_url: Optional[str] = Field(alias='remoteUrl')
 
-
-Process.update_forward_refs()
 
 class Config(BaseModel):
     app_name: str = Field(..., alias='appName')
@@ -141,7 +148,8 @@ def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
     my_env.update(proc.env)
     # TODO: Use tuple (PID, START_TIME) to id a process.
     # my_env['JENKY_NAME'] = name
-    my_env['JENKY_APP_VERSION'] = proc.repo.git_tag
+    repo = repos_by_process_id[id(proc)]
+    my_env['JENKY_APP_VERSION'] = ','.join(proc.repo.git_tag)
     my_env['JENKY_LOG_FILE'] = (cache_dir / f'{proc.name}.log').absolute().as_posix()
 
     if proc.cmd[0] == 'python':
@@ -274,7 +282,8 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
         repo = Repo.parse_obj(repo_info)
         repos.append(repo)
         for proc in repo.processes:
-            proc.repo = repo
+            # repos_by_process_id[id(proc)] = repo
+            proc.set_repo(repo)
     return repos
 
 
