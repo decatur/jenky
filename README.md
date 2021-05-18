@@ -104,9 +104,14 @@ python -m twine upload dist/*
 
 # Releases
 
+## 0.2.5
+
+* ...
+
 ## 0.2.4
 
 * Keep processes running
+* Show jenky version in UI
 
 ## 0.2.3
 

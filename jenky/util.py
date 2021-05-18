@@ -27,6 +27,10 @@ class Process(BaseModel):
     create_time: Optional[float] = Field(alias='createTime')
     service_sub_domain: Optional[str] = Field(alias='serviceSubDomain')
     service_home_path: Optional[str] = Field(alias='serviceHomePath')
+    repo: Optional['Repo'] = None
+
+
+
 
 
 class Repo(BaseModel):
@@ -38,6 +42,8 @@ class Repo(BaseModel):
     processes: List[Process]
     remote_url: Optional[str] = Field(alias='remoteUrl')
 
+
+Process.update_forward_refs()
 
 class Config(BaseModel):
     app_name: str = Field(..., alias='appName')
@@ -106,7 +112,7 @@ def sync_process(proc: Process, directory: Path):
         p = None
     elif proc.keep_running and not p:
         proc_logger.warning(f'Restarting process {proc.name}')
-        p = start_process(proc.name, directory, proc.cmd, proc.env)
+        p = start_process(proc, directory)
         if p:
             pid_file.write_text(json.dumps(dict(pid=p.pid, create_time=p.create_time())))
 
@@ -123,18 +129,22 @@ def sync_processes(repos: List[Repo]):
             sync_process(proc, repo.directory)
 
 
-def start_process(name: str, cwd: Path, cmd: List[str], env: dict) -> Optional[psutil.Process]:
+def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
+    name = proc.name
+
     proc_logger = logging.getLogger(name)
     current_working_directory = cwd.absolute().as_posix()
     proc_logger.info(f'Start process in {current_working_directory}')
 
     # TODO: On systemd, use it and replace jenky_config with service unit file.
     my_env = os.environ.copy()
-    my_env.update(env)
+    my_env.update(proc.env)
     # TODO: Use tuple (PID, START_TIME) to id a process.
     # my_env['JENKY_NAME'] = name
+    my_env['JENKY_APP_VERSION'] = proc.repo.git_tag
+    my_env['JENKY_LOG_FILE'] = (cache_dir / f'{proc.name}.log').absolute().as_posix()
 
-    if cmd[0] == 'python':
+    if proc.cmd[0] == 'python':
         executable = 'python'
         pyvenv_file = Path('venv/pyvenv.cfg')
         if pyvenv_file.is_file():
@@ -157,12 +167,14 @@ def start_process(name: str, cwd: Path, cmd: List[str], env: dict) -> Optional[p
             else:
                 assert False, 'Unsupported os ' + os.name
 
-        cmd = [executable] + cmd[1:]
+        cmd = [executable] + proc.cmd[1:]
+    else:
+        cmd = proc.cmd
 
     proc_logger.debug(f'Running: {" ".join(cmd)}')
     proc_logger.debug(f'PYTHONPATH: {my_env.get("PYTHONPATH", "")}')
 
-    out_file = cwd / f'{name}.out'
+    out_file = cache_dir / f'{name}.out'
     out_file.unlink(missing_ok=True)
     stdout = open(out_file.as_posix(), 'w')
 
@@ -259,7 +271,10 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
         if not repo_info.get("gitRef", ""):
             repo_info["gitRef"] = 'No git ref found'
 
-        repos.append(Repo.parse_obj(repo_info))
+        repo = Repo.parse_obj(repo_info)
+        repos.append(repo)
+        for proc in repo.processes:
+            proc.repo = repo
     return repos
 
 
