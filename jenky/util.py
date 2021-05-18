@@ -149,7 +149,7 @@ def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
     # TODO: Use tuple (PID, START_TIME) to id a process.
     # my_env['JENKY_NAME'] = name
     repo = repos_by_process_id[id(proc)]
-    my_env['JENKY_APP_VERSION'] = ','.join(proc.repo.git_tag)
+    my_env['JENKY_APP_VERSION'] = proc.repo.git_tag
     my_env['JENKY_LOG_FILE'] = (cache_dir / f'{proc.name}.log').absolute().as_posix()
 
     if proc.cmd[0] == 'python':
@@ -274,7 +274,7 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
         #repo_info['directory'] = repo_dir
 
         if (repo_dir / '.git').is_dir():
-            repo_info["gitRef"] = str(git_ref(repo_dir / '.git'))
+            repo_info["gitRef"] = ','.join(git_ref(repo_dir / '.git'))
 
         if not repo_info.get("gitRef", ""):
             repo_info["gitRef"] = 'No git ref found'

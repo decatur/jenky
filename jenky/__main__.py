@@ -107,8 +107,8 @@ def change_process_state(repo_id: str, process_id: str, action: Action):
 
 @app.get("/repos/{repo_id}/processes/{process_id}/{log_type}")
 def get_process_log(repo_id: str, process_id: str, log_type: str) -> Response:
-    repo = util.repo_by_id(config.repos, repo_id)
-    path = repo.directory / f'{process_id}.{log_type}'
+    # repo = util.repo_by_id(config.repos, repo_id)
+    path = util.cache_dir / f'{process_id}.{log_type}'
     if path.exists():
         lines = get_tail(path)
         return Response(content=''.join(lines), media_type="text/plain")
