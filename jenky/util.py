@@ -1,10 +1,9 @@
 # Note: FastApi does not support asyncio subprocesses, so do not use it!
-import glob
 import json
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple, Optional, Set, Dict
+from typing import List, Tuple, Optional, Dict
 import subprocess
 
 import psutil
@@ -39,20 +38,22 @@ class Process(BaseModel):
         repos_by_process_id[id(self)] = _repo
 
 
-repos_by_process_id: Dict[str, Process] = {}
-
-
 class Repo(BaseModel):
     repoName: str
     directory: Path
     git_tag: str = Field(default='', alias='gitRef')
+    git_refs: Dict[str, str] = Field(default='', alias='gitRefs')
     # git_refs: List[dict] = Field(..., alias='gitRefs')
     # git_message: str = Field(..., alias='gitMessage')
     processes: List[Process]
     remote_url: Optional[str] = Field(alias='remoteUrl')
 
     def refresh(self):
-        self.git_tag = ','.join(git_ref(self.directory / '.git'))
+        self.git_refs = git_ref(self.directory / '.git')
+        self.git_tag = ','.join(self.git_refs.values())
+
+
+repos_by_process_id: Dict[int, Repo] = {}
 
 
 class Config(BaseModel):
@@ -61,7 +62,7 @@ class Config(BaseModel):
     repos: List[Repo]
 
 
-def find_process_by_name(name: str, pid_file: Path) -> Optional[psutil.Process]:
+def find_process(pid_file: Path) -> Optional[psutil.Process]:
     logger.debug(f'Reading {pid_file}')
 
     if not pid_file.exists():
@@ -105,7 +106,7 @@ def find_process_by_name(name: str, pid_file: Path) -> Optional[psutil.Process]:
 def sync_process(proc: Process, directory: Path):
     proc_logger = logging.getLogger(proc.name)
     pid_file = cache_dir / (proc.name + '.json')
-    p = find_process_by_name(proc.name, pid_file)
+    p = find_process(pid_file)
 
     if proc.keep_running and p:
         pass
@@ -286,22 +287,22 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
     return repos
 
 
-def git_named_refs(git_hash: str, git_dir: Path) -> Set[str]:
+def git_named_refs(git_hash: str, git_dir: Path) -> Dict[str, str]:
     """
     Returns all named tag or reference for the provided hash and the hash.
     This method does not need nor uses a git client installation.
     """
 
-    refs = set([git_hash])
-    for item_name in glob.iglob(git_dir.as_posix() + '/refs/**', recursive=True):
-        file = Path(item_name)
-        if file.is_file() and git_hash == file.read_text(encoding='ascii').strip():
-            refs.add(file.name)
+    refs = dict(hash=git_hash)
+    ref_dir = git_dir / 'refs'
+    for item in ref_dir.glob('**/*'):
+        if item.is_file() and git_hash == item.read_text(encoding='ascii').strip():
+            refs[item.parent.relative_to(ref_dir).as_posix()] = item.name
 
     return refs
 
 
-def git_ref(git_dir: Path) -> Set[str]:
+def git_ref(git_dir: Path) -> Dict[str, str]:
     """
     Finds the git reference (tag or branch) of this working directory.
     This method does not need nor uses a git client installation.

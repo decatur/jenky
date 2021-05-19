@@ -87,6 +87,8 @@ def get_repos() -> Config:
     # refresh repos
     # config.repos = util.collect_repos(app_config['repos'])
     # util.sync_processes(config.repos)
+    for repo in config.repos:
+        repo.refresh()
     return config
 
 
@@ -148,7 +150,7 @@ app_config = json.loads(app_config_path.read_text(encoding='utf8'))
 for repo in app_config['repos']:
     repo['directory'] = (app_config_path.parent / repo['directory']).resolve()
 
-jenky_version = ','.join(git_ref(Path('./.git'))) if Path('./.git').is_dir() else ''
+jenky_version = ','.join(git_ref(Path('./.git')).values()) if Path('./.git').is_dir() else ''
 config = Config(appName=app_config['appName'], version=jenky_version, repos=util.collect_repos(app_config['repos']))
 
 uvicorn.run(app, host=args.host, port=args.port)
