@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import base64
 import collections
 import json
 import logging.handlers
@@ -84,7 +85,12 @@ def home():
 
 @app.get("/mirror")
 def home(request: Request) -> dict:
-    return JSONResponse(content=request.headers.items())
+    oidc_data = request.headers.get("x-amzn-oidc-data", "")
+    if oidc_data:
+        # See https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html
+        payload_json = base64.b64decode(oidc_data.split('.')[1]).decode("utf-8")
+        payload = json.loads(payload_json)
+    return JSONResponse(content=dict(headers=request.headers.items, userName=payload['name']))
 
 
 @app.get("/repos")
