@@ -90,7 +90,7 @@ def home(request: Request) -> dict:
         # See https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html
         payload_json = base64.b64decode(oidc_data.split('.')[1]).decode("utf-8")
         payload = json.loads(payload_json)
-    return JSONResponse(content=dict(headers=request.headers.items, userName=payload['name']))
+    return JSONResponse(content=dict(headers=request.headers.items(), userName=payload['name']))
 
 
 @app.get("/repos")
