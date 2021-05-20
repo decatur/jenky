@@ -10,10 +10,10 @@ from pathlib import Path
 from typing import List, Callable, Tuple
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from starlette.responses import RedirectResponse, Response
+from starlette.responses import RedirectResponse, Response, JSONResponse
 
 from jenky import util
 from jenky.util import Config, get_tail, git_ref
@@ -80,6 +80,11 @@ app.mount("/static", StaticFiles(directory=html_root.as_posix()), name="mymountn
 @app.get("/")
 def home():
     return RedirectResponse(url='/static/index.html')
+
+
+@app.get("/mirror")
+def home(request: Request) -> dict:
+    return JSONResponse(content=request.headers.items())
 
 
 @app.get("/repos")
