@@ -271,13 +271,6 @@ def collect_repos(repo_infos: List[dict]) -> List[Repo]:
     for repo_info in repo_infos:
         repo_dir = repo_info['directory']
         logger.info(f'Collect repo {repo_dir}')
-        #if 'directory' in repo_info:
-        #    repo_info['directory'] = (repo_dir / config['directory']).resolve()
-        #else:
-        #repo_info['directory'] = repo_dir
-
-        # repo_info["gitRef"] = repo_info.get("gitRef", "")
-
         repo = Repo.parse_obj(repo_info)
         repo.refresh()
         repos.append(repo)
@@ -308,7 +301,7 @@ def git_ref(git_dir: Path) -> Dict[str, str]:
     This method does not need nor uses a git client installation.
     """
 
-    logger.info(f'Scanning {git_dir.absolute()}')
+    logger.debug(f'Scanning {git_dir.absolute()}')
     head = (git_dir / 'HEAD').read_text(encoding='ascii').strip()
     if head.startswith('ref:'):
         # This is a branch, example "ref: refs/heads/master"
