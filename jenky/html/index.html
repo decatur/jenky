@@ -139,12 +139,19 @@
                 });
 
                 td = td.nextElementSibling;
-                let a = td.firstElementChild;
-                while (a) {
-                    const logType = a.textContent;
-                    a.href = `/repos/${name}/processes/${proc.name}/${logType}`;
-                    a.target = `${proc.name}_${logType}`;
-                    a = a.nextElementSibling;
+                if (proc.logUrl) {
+                    td.textContent = '';
+                    const a = document.createElement('a');
+                    a.href = 'proc.logUrl';
+                    a.textContent = 'Logs';
+                } else {
+                    let a = td.firstElementChild;
+                    while (a) {
+                        const logType = a.textContent;
+                        a.href = `/repos/${name}/processes/${proc.name}/${logType}`;
+                        a.target = `${proc.name}_${logType}`;
+                        a = a.nextElementSibling;
+                    }
                 }
 
                 tbody.appendChild(tr);

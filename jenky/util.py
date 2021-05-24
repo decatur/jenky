@@ -26,6 +26,7 @@ class Process(BaseModel):
     create_time: Optional[float] = Field(alias='createTime')
     service_sub_domain: Optional[str] = Field(alias='serviceSubDomain')
     service_home_path: Optional[str] = Field(alias='serviceHomePath')
+    log_url: Optional[str] = Field(alias='logUrl')
     # repo: Optional['Repo'] = None
 
     @property

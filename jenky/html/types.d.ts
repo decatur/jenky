@@ -5,6 +5,7 @@ declare namespace jenky {
         keepRunning: boolean;
         serviceSubDomain: string;
         serviceHomePath: string;
+        logUrl: string;
     }
 
     interface GitRef {
