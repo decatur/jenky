@@ -79,12 +79,6 @@ the repository:
 If Jenky finds a virtual environment in the `venv` folder, then the python runtime is resolved according this
 environment. 
 
-# References
-* [spotify/dh-virtualenv: Python virtualenvs in Debian packages](https://github.com/spotify/dh-virtualenv)
-* [How We Deploy Python Code | Nylas](https://www.nylas.com/blog/packaging-deploying-python/)
-* [Deployment - Full Stack Python](https://www.fullstackpython.com/deployment.html)
-* [How to run systemd in a container](https://developers.redhat.com/blog/2019/04/24/how-to-run-systemd-in-a-container/)
-
 # Best Practice for Processes
 
 TODO: Termination, see https://www.roguelynn.com/words/asyncio-graceful-shutdowns/
@@ -104,9 +98,9 @@ python -m twine upload dist/*
 
 # Releases
 
-## 0.2.5
+## 0.2.6
 
-* ...
+* AWS `x-amzn-oidc-data` header mirror endpoint
 
 ## 0.2.4
 
@@ -138,3 +132,12 @@ python -m twine upload dist/*
 
 ## 0.0.9
 * added process auto-run feature
+
+
+# References
+
+* [Telegraf Execd Input Plugin](https://github.com/influxdata/telegraf/tree/master/plugins/inputs/execd)
+* [spotify/dh-virtualenv: Python virtualenvs in Debian packages](https://github.com/spotify/dh-virtualenv)
+* [How We Deploy Python Code | Nylas](https://www.nylas.com/blog/packaging-deploying-python/)
+* [Deployment - Full Stack Python](https://www.fullstackpython.com/deployment.html)
+* [How to run systemd in a container](https://developers.redhat.com/blog/2019/04/24/how-to-run-systemd-in-a-container/)
