@@ -8,6 +8,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from pprint import pprint
 from typing import List, Callable, Tuple
 
 import uvicorn
@@ -65,6 +66,11 @@ def sync_processes_action() -> float:
     return time.time() + 5
 
 
+def read_logs_action() -> float:
+    util.read_logs()
+    return time.time() + 1
+
+
 @app.on_event("startup")
 async def startup_event():
     # loop = asyncio.get_running_loop()
@@ -72,6 +78,7 @@ async def startup_event():
     #     loop.add_signal_handler(
     #         sig, lambda s: print(s))
     asyncio.create_task(schedule(sync_processes_action, time.time() + 5))
+    asyncio.create_task(schedule(read_logs_action, time.time() + 1))
 
 
 html_root = Path(__file__).parent / 'html'
@@ -163,5 +170,8 @@ for repo in app_config['repos']:
 
 jenky_version = ','.join(git_ref(Path('./.git')).values()) if Path('./.git').is_dir() else ''
 config = Config(appName=app_config['appName'], version=jenky_version, repos=util.collect_repos(app_config['repos']))
+
+if util.log_handler is None:
+    util.log_handler = pprint
 
 uvicorn.run(app, host=args.host, port=args.port)

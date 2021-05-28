@@ -3,19 +3,19 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict
+from pprint import pprint
+from typing import List, Tuple, Optional, Dict, Callable
 import subprocess
 
+import persistqueue
 import psutil
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger()
 
-# git_cmd = 'C:/ws/tools/PortableGit/bin/git.exe'
-# git_cmd = 'git'
-git_cmd: str = ''
-git_version: str = ''
 cache_dir: Path
+queue: Optional[persistqueue.Queue] = None
+log_handler: Callable[[List[Dict]], None] = pprint
 
 
 class Process(BaseModel):
@@ -154,7 +154,7 @@ def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
 
     proc.repo.refresh()
     my_env['JENKY_APP_VERSION'] = proc.repo.git_tag
-    my_env['JENKY_LOG_FILE'] = (cache_dir / f'{proc.name}.log').absolute().as_posix()
+    my_env['JENKY_LOG_FILE'] = queue.path.as_posix()
 
     if proc.cmd[0] == 'python':
         executable = 'python'
@@ -313,3 +313,21 @@ def git_ref(git_dir: Path) -> Dict[str, str]:
         git_hash = head
 
     return git_named_refs(git_hash, git_dir)
+
+
+def read_logs():
+    global queue
+    if queue is None:
+        queue = persistqueue.SQLiteQueue((cache_dir / 'mypath').absolute())
+        logger.info(f'Cache path is {queue.path}')
+
+    items = []
+    while True:  # not queue.empty(), see https://github.com/peter-wangxu/persist-queue/issues/76#issuecomment-850350655
+        try:
+            item = queue.get(block=False)
+        except persistqueue.exceptions.Empty:
+            break
+        items.append(item)
+
+    log_handler(items)
+    queue.task_done()
