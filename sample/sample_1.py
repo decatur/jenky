@@ -8,9 +8,8 @@ from pathlib import Path
 
 from jenky.logging import PersistHandler
 
-app_version = os.environ.get('JENKY_APP_VERSION', '0.0.0.0')
+app_version = os.environ.get('JENKY_APP_VERSION', '0.0.0')
 print(app_version)
-
 
 logger = logging.getLogger('sample_1')
 # handler = logging.handlers.RotatingFileHandler(

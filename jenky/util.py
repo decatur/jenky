@@ -1,7 +1,9 @@
-# Note: FastApi does not support asyncio subprocesses, so do not use it!
+import argparse
+import collections
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from pprint import pprint
 from typing import List, Tuple, Optional, Dict, Callable
@@ -61,6 +63,29 @@ class Config(BaseModel):
     app_name: str = Field(..., alias='appName')
     version: str
     repos: List[Repo]
+
+
+class ListHandler(logging.StreamHandler):
+    def __init__(self):
+        super().__init__()
+        self.buffer = collections.deque(maxlen=1000)
+        self._current_time = 0
+        self._current_index = 0
+
+    def unique_id(self, timestamp: float) -> str:
+        if int(timestamp) == self._current_time:
+            self._current_index += self._current_index
+        else:
+            self._current_index = 0
+            self._current_time = int(timestamp)
+        return str(f'{self._current_time}i{self._current_index}')
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.buffer.appendleft((self.unique_id(record.created), msg))
+
+
+list_handler = ListHandler()
 
 
 def find_process(pid_file: Path) -> Optional[psutil.Process]:
@@ -155,6 +180,9 @@ def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
     proc.repo.refresh()
     my_env['JENKY_APP_VERSION'] = proc.repo.git_tag
     my_env['JENKY_LOG_FILE'] = queue.path.as_posix()
+    # We want to have a clean PYTHONPATH. We only add to paths, . and site packages.
+    # TODO: Is this a good idea?
+    my_env['PYTHONPATH'] = '.;'
 
     if proc.cmd[0] == 'python':
         executable = 'python'
@@ -168,14 +196,14 @@ def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
                 # Note that we are guessing the location of the python installation. This will kind of works on
                 # Windows, but not on linux.
                 executable = pyvenv['home'] + '/python.exe'
-                my_env['PYTHONPATH'] = 'venv/Lib/site-packages'
+                my_env['PYTHONPATH'] += 'venv/Lib/site-packages'
             elif os.name == 'posix':
                 # Note that we cannot just use pyvenv['home'], because that will probably say /usr/bin, but not
                 # what the python command was to create the venv!
                 # This is a symlink, which is ok.
                 # TODO: Shall we resolve the symlink?
                 executable = 'venv/bin/python'
-                my_env['PYTHONPATH'] = 'venv/lib/python3.8/site-packages'
+                my_env['PYTHONPATH'] += 'venv/lib/python3.8/site-packages'
             else:
                 assert False, 'Unsupported os ' + os.name
 
@@ -196,6 +224,7 @@ def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
         # This prevents that killing this process will kill the child process.
         kwargs = dict(start_new_session=True)
 
+    # Note: FastApi does not support asyncio subprocesses, so do not use it!
     popen = subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,  # TODO: We do not actually need this, even if subprocess reads from stdin.
@@ -204,7 +233,6 @@ def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
         cwd=current_working_directory,
         env=my_env,
         **kwargs)
-
 
     try:
         p = psutil.Process(popen.pid)
@@ -316,11 +344,6 @@ def git_ref(git_dir: Path) -> Dict[str, str]:
 
 
 def read_logs():
-    global queue
-    if queue is None:
-        queue = persistqueue.SQLiteQueue((cache_dir / 'mypath').absolute())
-        logger.info(f'Cache path is {queue.path}')
-
     items = []
     while True:  # not queue.empty(), see https://github.com/peter-wangxu/persist-queue/issues/76#issuecomment-850350655
         try:
@@ -329,5 +352,45 @@ def read_logs():
             break
         items.append(item)
 
-    log_handler(items)
-    queue.task_done()
+    if items:
+        log_handler(items)
+        queue.task_done()
+
+
+def parse_args() -> Tuple[str, int, Config]:
+    global cache_dir, queue
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host', type=str, help='Server host', default="127.0.0.1")
+    parser.add_argument('--port', type=int, help='Server port', default=8000)
+    parser.add_argument('--app-config', type=str,
+                        help='Path to JSON app configuration. This argument is env-var interpolated.',
+                        default="jenky_app_config.json")
+    parser.add_argument('--log-level', type=str, help='Log level', default="INFO")
+    parser.add_argument('--cache-dir', type=str, help='Path to cache dir', default=".jenky_cache")
+    args = parser.parse_args()
+
+    app_config_path = Path(args.app_config.format(**os.environ))
+    cache_dir = Path(args.cache_dir)
+    assert cache_dir.is_dir()
+    app_config = json.loads(app_config_path.read_text(encoding='utf8'))
+    for repo in app_config['repos']:
+        repo['directory'] = (app_config_path.parent / repo['directory']).resolve()
+
+    jenky_version = ','.join(git_ref(Path('./.git')).values()) if Path('./.git').is_dir() else ''
+    config = Config(appName=app_config['appName'], version=jenky_version, repos=collect_repos(app_config['repos']))
+
+    logger.setLevel(logging.__dict__[args.log_level])
+    logger.info(args)
+
+    queue = persistqueue.SQLiteQueue((cache_dir / 'mypath').absolute())
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+
+    for handler in (stream_handler, list_handler):
+        handler.formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s')
+        logger.addHandler(handler)
+
+    logger.info(f'Cache path is {queue.path}')
+
+    return args.host, args.port, config

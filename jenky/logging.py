@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Dict
 
 import persistqueue
 
@@ -12,6 +13,9 @@ class PersistHandler(logging.Handler):
         self.formatter = logging.Formatter()
 
     def emit(self, record: logging.LogRecord) -> None:
+        self.queue.put(self.record_to_dict(record))
+
+    def record_to_dict(self, record: logging.LogRecord) -> Dict:
         delattr(record, 'process')
         delattr(record, 'processName')
         delattr(record, 'thread')
@@ -31,5 +35,22 @@ class PersistHandler(logging.Handler):
         if not record.args:
             delattr(record, 'args')
 
-        self.queue.put(record.__dict__)
-        # pprint(record.__dict__)
+        return record.__dict__
+
+    @classmethod
+    def record_from_dict(cls, d: Dict) -> logging.LogRecord:
+        record = logging.LogRecord(
+            d['name'],
+            logging.__dict__[d['levelname']],
+            d['pathname'],
+            d['lineno'],
+            d['msg'],
+            args=(),
+            exc_info=None,
+            func=d['funcName']
+        )
+        record.module = d['module']
+        record.created = d['created']
+        if 'exc_text' in d:
+            record.exc_text = d['exc_text']
+        return record

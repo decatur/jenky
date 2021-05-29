@@ -1,55 +1,25 @@
-import argparse
+
 import asyncio
 import base64
 import collections
 import json
 import logging.handlers
-import os
+
 import sys
 import time
 from pathlib import Path
-from pprint import pprint
 from typing import List, Callable, Tuple
 
-import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.responses import RedirectResponse, Response, JSONResponse
 
 from jenky import util
-from jenky.util import Config, get_tail, git_ref
-
-
-class ListHandler(logging.StreamHandler):
-    def __init__(self):
-        super().__init__()
-        self.buffer = collections.deque(maxlen=1000)
-        self._current_time = 0
-        self._current_index = 0
-
-    def unique_id(self, timestamp: float) -> str:
-        if int(timestamp) == self._current_time:
-            self._current_index += self._current_index
-        else:
-            self._current_index = 0
-            self._current_time = int(timestamp)
-        return str(f'{self._current_time}i{self._current_index}')
-
-    def emit(self, record):
-        msg = self.format(record)
-        self.buffer.appendleft((self.unique_id(record.created), msg))
+from jenky.util import Config, get_tail
 
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-stream_handler = logging.StreamHandler(sys.stdout)
-list_handler = ListHandler()
-
-for handler in (stream_handler, list_handler):
-    handler.formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s')
-    logger.addHandler(handler)
-
 app = FastAPI()
 
 
@@ -62,7 +32,7 @@ async def schedule(action: Callable[[], float], start_at: float):
 
 
 def sync_processes_action() -> float:
-    util.sync_processes(config.repos)
+    util.sync_processes(app.state.config.repos)
     return time.time() + 5
 
 
@@ -105,9 +75,9 @@ def get_repos() -> Config:
     # refresh repos
     # config.repos = util.collect_repos(app_config['repos'])
     # util.sync_processes(config.repos)
-    for repo in config.repos:
+    for repo in app.state.config.repos:
         repo.refresh()
-    return config
+    return app.state.config
 
 
 class Action(BaseModel):
@@ -117,7 +87,7 @@ class Action(BaseModel):
 @app.post("/repos/{repo_id}/processes/{process_id}")
 def change_process_state(repo_id: str, process_id: str, action: Action):
     assert action.action in {'kill', 'restart'}
-    _, proc = util.get_by_id(config.repos, repo_id, process_id)
+    _, proc = util.get_by_id(app.state.config.repos, repo_id, process_id)
     proc.keep_running = (action.action == 'restart')
     # util.sync_process(proc, repo.directory)
     time.sleep(1)
@@ -139,39 +109,13 @@ def get_process_log(repo_id: str, process_id: str, log_type: str) -> Response:
 @app.get("/logs")
 def get_logs(last_event_id: str = None) -> dict:
     logs_since: List[Tuple[str, str]] = []
-    for item in list_handler.buffer:
+    for item in util.list_handler.buffer:
         if item[0] == last_event_id:
             break
         logs_since.append(item)
 
-    return dict(logsSince=logs_since, maxLength=list_handler.buffer.maxlen, repos=config.repos)
+    return dict(logsSince=logs_since, maxLength=util.list_handler.buffer.maxlen, repos=app.state.config.repos)
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--host', type=str, help='Server host', default="127.0.0.1")
-parser.add_argument('--port', type=int, help='Server port', default=8000)
-parser.add_argument('--app-config', type=str,
-                    help='Path to JSON app configuration. This argument is env-var interpolated.',
-                    default="jenky_app_config.json")
-parser.add_argument('--log-level', type=str, help='Log level', default="INFO")
-parser.add_argument('--cache-dir', type=str, help='Path to cache dir', default=".jenky_cache")
-args = parser.parse_args()
 
-logger.info(args)
 
-logger.setLevel(logging.__dict__[args.log_level])
-
-app_config_path = Path(args.app_config.format(**os.environ))
-util.cache_dir = Path(args.cache_dir)
-assert util.cache_dir.is_dir()
-app_config = json.loads(app_config_path.read_text(encoding='utf8'))
-for repo in app_config['repos']:
-    repo['directory'] = (app_config_path.parent / repo['directory']).resolve()
-
-jenky_version = ','.join(git_ref(Path('./.git')).values()) if Path('./.git').is_dir() else ''
-config = Config(appName=app_config['appName'], version=jenky_version, repos=util.collect_repos(app_config['repos']))
-
-if util.log_handler is None:
-    util.log_handler = pprint
-
-uvicorn.run(app, host=args.host, port=args.port)
