@@ -1,4 +1,3 @@
-import logging
 from typing import List
 
 import uvicorn
@@ -6,9 +5,6 @@ import uvicorn
 from jenky.logging import PersistHandler
 from jenky.server import app
 from jenky import util
-
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
 
 
 def my_handler(records: List[dict]):

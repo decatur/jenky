@@ -1,3 +1,6 @@
+# TODO: Rename?
+# If an application accidentally has the jenky package folder in its search path,
+# this module overrides stdlib logging package, and things fail. Which is fine, or not.
 import logging
 from pathlib import Path
 from typing import Dict
