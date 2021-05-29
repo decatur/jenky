@@ -98,6 +98,10 @@ python -m twine upload dist/*
 
 # Releases
 
+## 0.2.7
+
+* Added persistent log cache
+
 ## 0.2.6
 
 * AWS `x-amzn-oidc-data` header mirror endpoint
