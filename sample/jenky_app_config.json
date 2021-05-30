@@ -13,6 +13,7 @@
             "sample/sample_1.py"
           ],
           "env": {},
+          "logUrl": "foo",
           "keepRunning": true,
           "createTime": 0
         }

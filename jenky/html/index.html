@@ -60,11 +60,7 @@
         <td>
             <label style="display: inline-block"><input type="checkbox" name="KeepAlive"></label>
         </td>
-        <td>
-            <a href="" target="">out</a>
-            <a href="" target="">log</a>
-            <a href="" target="">log.1</a>
-        </td>
+        <td></td>
     </tr>
 </template>
 
@@ -139,21 +135,18 @@
                 });
 
                 td = td.nextElementSibling;
+                const logSources = [{displayText: 'out', url: `/repos/${name}/processes/${proc.name}/out`}];
                 if (proc.logUrl) {
-                    td.textContent = '';
+                    logSources.push({displayText: 'log', url: proc.logUrl})
+                }
+
+                for (const logSource of logSources) {
                     const a = document.createElement('a');
-                    a.href = proc.logUrl;
-                    a.textContent = 'Logs';
+                    a.href = logSource.url;
+                    a.textContent = logSource.displayText;
                     a.target = `${proc.name}_logs`;
+                    a.style.marginRight = '1ex';
                     td.appendChild(a);
-                } else {
-                    let a = td.firstElementChild;
-                    while (a) {
-                        const logType = a.textContent;
-                        a.href = `/repos/${name}/processes/${proc.name}/${logType}`;
-                        a.target = `${proc.name}_${logType}`;
-                        a = a.nextElementSibling;
-                    }
                 }
 
                 tbody.appendChild(tr);
