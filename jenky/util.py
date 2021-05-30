@@ -13,7 +13,7 @@ import persistqueue
 import psutil
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger()
+logger = logging.getLogger(__package__)
 
 cache_dir: Path
 queue: Optional[persistqueue.Queue] = None
@@ -168,7 +168,6 @@ def sync_processes(repos: List[Repo]):
 
 def start_process(proc: Process, cwd: Path) -> Optional[psutil.Process]:
     name = proc.name
-
     proc_logger = logging.getLogger(name)
     current_working_directory = cwd.absolute().as_posix()
     proc_logger.info(f'Start process in {current_working_directory}')

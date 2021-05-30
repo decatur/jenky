@@ -1,11 +1,9 @@
 
 import asyncio
 import base64
-import collections
 import json
 import logging.handlers
 
-import sys
 import time
 from pathlib import Path
 from typing import List, Callable, Tuple
@@ -19,34 +17,33 @@ from jenky import util
 from jenky.util import Config, get_tail
 
 
-logger = logging.getLogger()
+logger = logging.getLogger(__package__)
 app = FastAPI()
 
 
 async def schedule(action: Callable[[], float], start_at: float):
     while True:
         await asyncio.sleep(start_at - time.time())
-        start_at = action()
+        try:
+            # assert False, 'FooBar'
+            start_at = action()
+        except Exception as e:
+            logger.exception(str(action))
+            start_at += 1
         if start_at < 0.:
             break
 
 
-def sync_processes_action() -> float:
-    util.sync_processes(app.state.config.repos)
-    return time.time() + 5
-
-
-def read_logs_action() -> float:
-    util.read_logs()
-    return time.time() + 1
-
-
 @app.on_event("startup")
 async def startup_event():
-    # loop = asyncio.get_running_loop()
-    # for sig in (signal.SIGTERM, signal.SIGINT):  # signal.SIGHUP,
-    #     loop.add_signal_handler(
-    #         sig, lambda s: print(s))
+    def sync_processes_action() -> float:
+        util.sync_processes(app.state.config.repos)
+        return time.time() + 5
+
+    def read_logs_action() -> float:
+        util.read_logs()
+        return time.time() + 1
+
     asyncio.create_task(schedule(sync_processes_action, time.time() + 5))
     asyncio.create_task(schedule(read_logs_action, time.time() + 1))
 

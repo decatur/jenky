@@ -178,7 +178,6 @@
     }
 
     function fetchRepos() {
-        fetchLogs()
         fetch('/repos')
             .then(response => response.json())
             .then(data => {
