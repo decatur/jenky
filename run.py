@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import uvicorn
@@ -6,6 +7,8 @@ from jenky.logging import PersistHandler
 from jenky.server import app
 from jenky import util
 
+logger = logging.getLogger("uvicorn.access")
+logger.setLevel(logging.WARNING)
 
 def my_handler(records: List[dict]):
     for record in records:
@@ -16,4 +19,4 @@ host, port, config = util.parse_args()
 app.state.config = config
 
 util.log_handler = my_handler
-uvicorn.run(app, host=host, port=port)
+uvicorn.run(app, host=host, port=port, log_level='warning')

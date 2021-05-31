@@ -6,4 +6,4 @@ from jenky import util
 
 host, port, config = util.parse_args()
 app.state.config = config
-uvicorn.run(app, host=host, port=port)
+uvicorn.run(app, host=host, port=port, access_log=False)

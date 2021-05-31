@@ -171,10 +171,7 @@
                 }
             })
             .then(data => console.log(data))
-            .then(fetchLogs)
-        window.setTimeout(() => {
-            fetchLogs()
-        }, 6000)
+            //.then(fetchLogs)
     }
 
     function fetchRepos() {
@@ -200,14 +197,17 @@
                     // TODO: Also send updated git tags
                     logs = data['logsSince'].concat(logs).slice(0, data['maxLength']);
                     document.getElementById('logs').textContent = JSON.stringify(logs.map(item => item[1]), null, 4);
-                    window.setTimeout(() => {
-                        fetchLogs()
-                    }, 6000)
+                    // window.setTimeout(() => {
+                    //     fetchLogs()
+                    // }, 6000)
                 }
             })
     }
 
     fetchRepos()
-    fetchLogs()
+    window.setInterval(() => {
+        fetchLogs()
+    }, 6000)
+
 </script>
 </html>

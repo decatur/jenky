@@ -130,7 +130,6 @@ def find_process(pid_file: Path) -> Optional[psutil.Process]:
 
 
 def sync_process(proc: Process, directory: Path):
-    proc_logger = logging.getLogger(proc.name)
     pid_file = cache_dir / (proc.name + '.json')
     p = find_process(pid_file)
 
@@ -139,7 +138,7 @@ def sync_process(proc: Process, directory: Path):
     elif not proc.keep_running and not p:
         pass
     elif not proc.keep_running and p:
-        proc_logger.warning(f'Reaping process {proc.name}')
+        logger.warning(f'Reaping process {proc.name}')
         p.terminate()
         # We need to wait unless a zombie stays in process list!
         # TODO: We should do this async.
@@ -148,7 +147,7 @@ def sync_process(proc: Process, directory: Path):
             process.kill()
         p = None
     elif proc.keep_running and not p:
-        proc_logger.warning(f'Restarting process {proc.name}')
+        logger.warning(f'Restarting process {proc.name}')
         p = start_process(proc, directory)
         if p:
             pid_file.write_text(json.dumps(dict(pid=p.pid, create_time=p.create_time())))
